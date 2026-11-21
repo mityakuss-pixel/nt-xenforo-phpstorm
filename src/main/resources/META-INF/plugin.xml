@@ -55,6 +55,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <fileBasedIndex implementation="nt.xenforo.index.XfSymbolIndex"/>
         <fileBasedIndex implementation="nt.xenforo.index.XfTemplaterIndex"/>
         <psi.referenceContributor language="XenForoTemplate" implementation="nt.xenforo.reference.XfReferenceContributor"/>
+        <gotoDeclarationHandler implementation="nt.xenforo.reference.XfTagGotoDeclarationHandler"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAttributeValue" implementationClass="nt.xenforo.reference.XfAttributeValueManipulator"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfStringExpr" implementationClass="nt.xenforo.reference.XfStringExprManipulator"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAccessExpression" implementationClass="nt.xenforo.reference.XfAccessExpressionManipulator"/>

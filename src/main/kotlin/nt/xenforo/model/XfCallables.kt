@@ -23,6 +23,11 @@ import nt.xenforo.index.XfCustomCallables
 import nt.xenforo.index.XfSymbolLocation
 import nt.xenforo.meta.XfBuiltins
 
+private val WHITESPACE = Regex("""\s+""")
+private val PARAM_PREFIX = Regex("""^@param\s+(?:[^\s$]+\s+)?&?(?:\.\.\.)?\$\w+\s*""")
+
+class XfCallableDoc(val description: String?, val parameters: List<Pair<String, String?>>, val returnType: String?, val returns: String?)
+
 object XfCallables {
     private const val TEMPLATER = "\\XF\\Template\\Templater"
     private const val THIS = "this"
@@ -57,6 +62,38 @@ object XfCallables {
         val location = registration(project, kind, name) ?: return null
         return customFunction(project, location) ?: registrationElement(project, location)
     }
+
+    fun documentation(project: Project, kind: XfCallableKind, name: String): XfCallableDoc? {
+        if (DumbService.isDumb(project)) return null
+        val function = if (isBuiltin(kind, name)) {
+            templaterMethod(project, kind, name) as? Function
+        } else {
+            registration(project, kind, name)?.let { customFunction(project, it) }
+        } ?: return null
+        val comment = function.docComment
+        val parameters = function.parameters.drop(kind.skippedParameters).map { parameter ->
+            val text = comment?.getParamTagByName(parameter.name)?.let { tagText(it.text).replace(PARAM_PREFIX, "").trim() }
+            XfPhpMembers.parameterText(parameter) to text?.ifEmpty { null }
+        }
+        val returnTag = comment?.returnTag?.let { tagText(it.text).removePrefix("@return").trim() }?.takeIf { it.isNotEmpty() }
+        val returnType = returnTag?.substringBefore(' ')?.let(XfPhpMembers::presentableTypeText) ?: XfPhpMembers.presentable(function.declaredType)
+        val returns = returnTag?.substringAfter(' ', "")?.trim()?.ifEmpty { null }
+        val description = comment?.let { description(it.text) }
+        if (description == null && parameters.none { it.second != null } && returnTag == null) return null
+        return XfCallableDoc(description, parameters, returnType, returns)
+    }
+
+    private fun description(comment: String): String? {
+        val lines = cleanLines(comment)
+        return lines.takeWhile { !it.startsWith("@") }.joinToString("\n").trim().ifEmpty { null }
+    }
+
+    private fun tagText(text: String): String = cleanLines(text).joinToString(" ").replace(WHITESPACE, " ").trim()
+
+    private fun cleanLines(text: String): List<String> = text
+        .removePrefix("/**").removeSuffix("*/")
+        .lines()
+        .map { it.trim().removePrefix("*").trim() }
 
     fun splitParameters(signature: String): List<String> {
         if (signature.isBlank()) return emptyList()
@@ -120,8 +157,11 @@ object XfCallables {
     }
 
     private fun customFunction(project: Project, location: XfSymbolLocation): Function? {
-        val expression = registrationElement(project, location) ?: return null
-        PsiTreeUtil.findChildOfType(expression, Function::class.java, false)?.takeIf { it.isClosure }?.let { return it }
+        val registration = registrationElement(project, location) ?: return null
+        PsiTreeUtil.findChildOfType(registration, Function::class.java, false)?.takeIf { it.isClosure }?.let { return it }
+        val expression = PsiTreeUtil.findChildOfAnyType(
+            registration, false, ArrayCreationExpression::class.java, StringLiteralExpression::class.java,
+        ) ?: return null
         return when (expression) {
             is ArrayCreationExpression -> arrayCallable(project, expression)
             is StringLiteralExpression -> stringCallable(project, expression)

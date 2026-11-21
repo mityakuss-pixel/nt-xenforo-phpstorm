@@ -36,6 +36,19 @@ class XfInsightTest : XfTestCase() {
         assertEquals(0, current)
     }
 
+    fun testCustomFunctionDocumentationUsesPhpDoc() {
+        myFixture.addFileToProject("src/addons/Demo/Test/addon.json", "{\n    \"title\": \"Demo\"\n}")
+        myFixture.addFileToProject("src/addons/Demo/Test/Listener.php", LISTENER)
+        configureTemplate("{{ demo_to<caret>tal(\$items) }}")
+        val html = documentation()
+        assertTrue(html, html.contains("demo_total</b>(array \$items, float|int \$rate = 1, array \$options = [])"))
+        assertTrue(html, html.contains("Sums item prices."))
+        assertTrue(html, html.contains("<code>array \$items</code> Items with a price key"))
+        assertFalse(html, html.contains("\$escape"))
+        assertTrue(html, html.contains("<code>Phrase</code> Formatted total"))
+        assertTrue(html, html.contains("Demo/Test"))
+    }
+
     fun testPhraseDocumentationShowsText() {
         addDataFile("phrases.xml", "<phrases>\n  <phrase title=\"stick_thread\" version_id=\"1\"><![CDATA[Stick thread]]></phrase>\n</phrases>")
         configureTemplate("{{ phrase('stick_th<caret>read') }}")
@@ -151,7 +164,19 @@ class XfInsightTest : XfTestCase() {
                     ${'$'}templater->addFunction('demo_badge', function (\XF\Template\Templater ${'$'}templater, &${'$'}escape, ${'$'}user, ${'$'}size = 's') {
                         return '';
                     });
+                    ${'$'}templater->addFunction('demo_total', [self::class, 'fnTotal']);
                 }
+
+                /**
+                 * Sums item prices.
+                 *
+                 * @param \XF\Template\Templater ${'$'}templater
+                 * @param bool ${'$'}escape
+                 * @param array ${'$'}items Items with a price key
+                 * @param float|int ${'$'}rate Rate to apply
+                 * @return \XF\Phrase Formatted total
+                 */
+                public static function fnTotal(${'$'}templater, &${'$'}escape, array ${'$'}items, ${'$'}rate = 1, array ${'$'}options = []) {}
             }
         """.trimIndent()
     }

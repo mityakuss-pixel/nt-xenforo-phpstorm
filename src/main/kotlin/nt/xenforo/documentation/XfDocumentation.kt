@@ -24,7 +24,7 @@ import nt.xenforo.lang.XfFileViewProvider
 import nt.xenforo.lang.XfIcons
 import nt.xenforo.lang.XfLanguage
 import nt.xenforo.meta.XfGlobals
-import nt.xenforo.meta.XfTags
+import nt.xenforo.model.XfTagCatalog
 import nt.xenforo.model.XfAccess
 import nt.xenforo.model.XfCallables
 import nt.xenforo.model.XfMember
@@ -100,13 +100,17 @@ object XfDocumentation {
     private fun tag(element: PsiElement): XfDocumentationTarget? {
         val parent = element.parent
         if (parent !is XfTagHeader && parent !is XfEndTagElement) return null
-        val info = XfTags.get(element.text) ?: return null
+        val project = element.project
+        val info = XfTagCatalog.get(project, element.text) ?: return null
+        val definition = XfTagCatalog.definition(project, info.name)
         val required = info.required.joinToString("") { " $it=\"…\"" }
         val code = if (info.block) "<xf:${info.name}$required>…</xf:${info.name}>" else "<xf:${info.name}$required />"
         val sections = buildList {
             if (info.required.isNotEmpty()) add(message("doc.section.required") to sectionCode(info.required.joinToString(", ")))
             val optional = info.attributes.filter { it !in info.required }
             if (optional.isNotEmpty()) add(message("doc.section.attributes") to sectionCode(optional.joinToString(", ")))
+            definition?.let { add(message("doc.section.implemented.by") to sectionCode(it.classFqn.removePrefix("\\"))) }
+            definition?.registration?.let { add(definedIn(listOf(it))) }
         }
         val kind = message(if (info.block) "doc.kind.tag.block" else "doc.kind.tag.single")
         return XfDocumentationTarget("xf:${info.name}", XfIcons.TAG, plain(code), kind, sections)
@@ -133,8 +137,20 @@ object XfDocumentation {
         }
         val signature = if (kind == XfCallableKind.FUNCTION || parameters.isNotEmpty()) "(${parameters.joinToString(", ")})" else ""
         val registration = XfCallables.registration(project, kind, name)
-        val content = if (registration == null) message(kindKey) else XfBundle.message("$kindKey.custom", registration.addOnId ?: registration.relativePath)
-        val sections = listOfNotNull(registration?.let { definedIn(listOf(it)) })
+        val origin = if (registration == null) message(kindKey) else XfBundle.message("$kindKey.custom", registration.addOnId ?: registration.relativePath)
+        val doc = XfCallables.documentation(project, kind, name)
+        val content = listOfNotNull(doc?.description?.let(::multiline), escape(origin)).joinToString("<p>")
+        val sections = buildList {
+            doc?.parameters?.takeIf { parameters -> parameters.any { it.second != null } }?.let { parameters ->
+                add(message("doc.section.parameters") to parameters.joinToString("<br>") { (parameter, text) ->
+                    sectionCode(parameter) + text?.let { " " + escape(it) }.orEmpty()
+                })
+            }
+            if (doc?.returnType != null || doc?.returns != null) {
+                add(message("doc.section.returns") to listOfNotNull(doc.returnType?.let(::sectionCode), doc.returns?.let(::escape)).joinToString(" "))
+            }
+            registration?.let { add(definedIn(listOf(it))) }
+        }
         return XfDocumentationTarget(name, icon, plain(prefix) + bold(name) + plain(signature), content, sections)
     }
 

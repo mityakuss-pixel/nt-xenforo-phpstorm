@@ -17,6 +17,7 @@ object XfPhpMembers {
     private const val ENTITY_BASE = "\\XF\\Mvc\\Entity\\Entity"
     private const val COLUMN_TAG = "@property"
     private const val NULL_TYPE = "null"
+    private const val DEFAULT_VALUE_LIMIT = 40
 
     private val HIDDEN_METHODS = setOf("offsetGet", "offsetSet", "offsetExists", "offsetUnset", "getIterator", "jsonSerialize")
 
@@ -76,12 +77,18 @@ object XfPhpMembers {
     }
 
     fun parameterText(parameter: Parameter): String = buildString {
-        presentable(parameter.declaredType)?.let { append(it).append(' ') }
+        val type = parameter.declaredType.takeUnless { it.isEmpty } ?: parameter.docType
+        presentable(type)?.let { append(it).append(' ') }
         if (parameter.isPassByRef) append('&')
         if (parameter.isVariadic) append("...")
         append('$').append(parameter.name)
-        parameter.defaultValuePresentation?.takeIf { it.isNotEmpty() }?.let { append(" = ").append(it) }
+        val defaultValue = parameter.defaultValue?.text?.takeIf { it.length <= DEFAULT_VALUE_LIMIT && '\n' !in it }
+            ?: parameter.defaultValuePresentation
+        defaultValue?.takeIf { it.isNotEmpty() }?.let { append(" = ").append(it) }
     }
+
+    fun presentableTypeText(type: String): String =
+        type.split('|').joinToString("|") { it.trim().removePrefix("\\").substringAfterLast('\\') }
 
     private fun classes(project: Project, names: List<String>): List<PhpClass> {
         val index = PhpIndex.getInstance(project)

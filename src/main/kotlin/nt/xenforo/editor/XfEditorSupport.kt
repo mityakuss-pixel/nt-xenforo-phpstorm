@@ -36,7 +36,7 @@ import com.intellij.xml.XmlTagNameProvider
 import nt.xenforo.completion.tagLookup
 import nt.xenforo.lang.XfFileViewProvider
 import nt.xenforo.lang.XfLanguage
-import nt.xenforo.meta.XfTags
+import nt.xenforo.model.XfTagCatalog
 import nt.xenforo.psi.XfTagElement
 import nt.xenforo.psi.XfTypes
 
@@ -207,7 +207,7 @@ class XfMultipleLangCommentProvider : MultipleLangCommentProvider {
 class XfHtmlTagNameProvider : XmlTagNameProvider {
     override fun addTagNameVariants(elements: MutableList<LookupElement>, tag: XmlTag, prefix: String?) {
         if (!isTemplate(tag.containingFile)) return
-        for (info in XfTags.ALL) {
+        for (info in XfTagCatalog.all(tag.project)) {
             if (!info.nested) elements += tagLookup(info, "xf:")
         }
     }

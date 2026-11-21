@@ -45,6 +45,8 @@ object XfTags {
         "redirect" to setOf("referrer"),
     )
 
+    private val LEXER_TAGS = setOf("comment", "plain")
+
     val BRANCHES: Map<String, Set<String>> = mapOf(
         "if" to setOf("else", "elseif"),
         "foreach" to setOf("else"),
@@ -168,6 +170,8 @@ object XfTags {
 
     fun isExpressionAttribute(tag: String, attribute: String): Boolean =
         expressionAttributes[tag.lowercase()]?.contains(attribute.lowercase()) == true
+
+    fun isStructural(name: String): Boolean = get(name)?.nested == true || name.lowercase() in LEXER_TAGS
 
     fun isBranch(parent: String, child: String): Boolean = BRANCHES[parent.lowercase()]?.contains(child.lowercase()) == true
 }

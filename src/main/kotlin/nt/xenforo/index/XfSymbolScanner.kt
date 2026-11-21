@@ -28,7 +28,7 @@ private val JSON_STRING = Regex(""""((?:[^"\\]|\\.)*)"""")
 
 private val LESS_INCLUDE = Regex("""include\(\s*'([^']+)'\s*\)|<xf:include\s+template="([^"]+)"|@import\s+(?:\([^)]*\)\s*)?['"]([^'"]+)['"]""")
 private val LESS_VARIABLE = Regex("""(?m)^[ \t]*@([\w-]+)\s*:""")
-private val LESS_MIXIN = Regex("""(?m)^[ \t]*\.([\w-]+)\s*(?:\(|\{|when\b)""")
+private val LESS_MIXIN = Regex("""(?m)^[ \t]*\.([\w-]+)\s*(?:\((?:[^(){}]|\([^(){}]*\))*\))?\s*(?:when\b[^{;]*)?\{""")
 
 object XfLessKeys {
     fun includes(type: String, title: String): String = "i:$type:$title"

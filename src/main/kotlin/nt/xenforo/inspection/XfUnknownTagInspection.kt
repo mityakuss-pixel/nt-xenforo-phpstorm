@@ -4,7 +4,7 @@ import com.intellij.codeInspection.LocalInspectionTool
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.PsiElementVisitor
 import nt.xenforo.XfBundle
-import nt.xenforo.meta.XfTags
+import nt.xenforo.model.XfTagCatalog
 import nt.xenforo.psi.XfBranchTag
 import nt.xenforo.psi.XfStartTag
 import nt.xenforo.psi.XfTagHeader
@@ -19,7 +19,7 @@ class XfUnknownTagInspection : LocalInspectionTool() {
         private fun check(header: XfTagHeader) {
             val nameElement = header.tagNameElement ?: return
             val name = header.tagName
-            if (name.isEmpty() || XfTags.isKnown(name)) return
+            if (name.isEmpty() || XfTagCatalog.isKnown(header.project, name)) return
             holder.registerProblem(nameElement, XfBundle.message("inspection.unknown.tag.message", name))
         }
     }

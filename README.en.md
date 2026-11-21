@@ -32,7 +32,7 @@ Without the plugin, PhpStorm treats a template as plain HTML. It reports `{{ lin
 
 ### Completion
 
-- `<xf:…>` tags with their required attributes: picking `if` inserts `<xf:if is=""></xf:if>` and puts the caret inside the quotes.
+- `<xf:…>` tags with their required attributes: picking `if` inserts `<xf:if is=""></xf:if>` and puts the caret inside the quotes. The tag list comes from `XF\Template\Compiler` in your project and attributes are completed from the tag classes, so suggestions match the installed XF version. Custom tags registered with `setTag()` in `config.php` or in an add-on are completed too and are not reported as unknown.
 - Attributes of the tag under the caret.
 - Template functions with parameters, filters after `|`, the `is empty` test.
 - Functions, filters and tests that your add-ons register in PHP with `addFunction()`, `addFilter()` and `addTest()` in event listeners and class extensions.
@@ -51,6 +51,7 @@ The plugin knows templates, macros, phrases, routes and style properties from th
 | `phrase('…')` | phrase, with its text shown in the completion list |
 | `link('…')`, `link_type('…', '…')` | route |
 | `property('…')` | style property |
+| `<xf:avatar>`, `<xf:foreach>` and other tags | the tag class in `XF\Template\Compiler\Tag` or in add-on code |
 | `$xf.visitor.username`, `$xf.visitor.canSearch()` | PHP class field or method |
 | `$xf.options.boardTitle` | option in `options.xml` or `_output/options` |
 | `phrase(…)`, `\|escape`, `demo_badge(…)` | `Templater` method or the add-on code that registers the function |
@@ -61,7 +62,7 @@ The **Structure** tool window shows `<xf:…>` tags as a tree, macros as `xf:mac
 
 ### Documentation and parameters
 
-- <kbd>Ctrl</kbd>+<kbd>Q</kbd> or hovering shows the phrase text, the option title and explanation, tag attributes, function parameters and the add-on that registered a function. For `$xf` fields and methods, the PHP documentation opens.
+- <kbd>Ctrl</kbd>+<kbd>Q</kbd> or hovering shows the phrase text, the option title and explanation, tag attributes, function parameters and the add-on that registered a function. Function and parameter descriptions come from the PHPDoc of the implementing method. For `$xf` fields and methods, the PHP documentation opens.
 - <kbd>Ctrl</kbd>+<kbd>P</kbd> inside parentheses shows the parameters of a function, filter or method and highlights the current one.
 - The phrase text is shown in gray after `{{ phrase('…') }}`, so you don't have to look it up.
 
@@ -69,7 +70,7 @@ The **Structure** tool window shows `<xf:…>` tags as a tree, macros as `xf:mac
 
 `.less` and `.css` templates from `_output/templates` open as XenForo templates on top of LESS and CSS: `<xf:if>`, `<xf:foreach>` and `{$…}` inside styles don't break parsing.
 
-Every stylesheet gets what `XF\CssRenderer` adds to it: `public:setup.less` with its nested templates, `<prefix>_prepend.less` and everything included with `{{ include('…') }}`, `<xf:include>` and `@import`. Variables and mixins from them, `@xf-…` and `.xf-…()` from style properties and `@fa-var-…` are not reported as undeclared. Typos in other LESS names are still highlighted.
+Every stylesheet gets what `XF\CssRenderer` adds to it: `public:setup.less` with its nested templates, `<prefix>_prepend.less` and everything included with `{{ include('…') }}`, `<xf:include>` and `@import`. Variables and mixins from them, `@xf-…` and `.xf-…()` from style properties and `@fa-var-…` are not reported as undeclared. Typos in other LESS names are still highlighted. Ctrl+Click on a variable or mixin opens its declaration: a mixin parameter, the file itself, an included template, `setup.less` or a style property.
 
 ### Formatting
 

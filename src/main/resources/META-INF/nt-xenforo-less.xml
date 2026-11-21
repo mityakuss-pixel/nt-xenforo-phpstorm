@@ -2,5 +2,6 @@
     <extensions defaultExtensionNs="com.intellij">
         <lang.substitutor language="LESS" implementationClass="nt.xenforo.lang.XfLanguageSubstitutor"/>
         <lang.inspectionSuppressor language="LESS" implementationClass="nt.xenforo.less.XfLessInspectionSuppressor"/>
+        <gotoDeclarationHandler implementation="nt.xenforo.less.XfLessGotoDeclarationHandler"/>
     </extensions>
 </idea-plugin>

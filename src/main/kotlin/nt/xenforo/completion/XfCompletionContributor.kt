@@ -27,13 +27,13 @@ import nt.xenforo.index.XfSymbols
 import nt.xenforo.lang.XfIcons
 import nt.xenforo.meta.XfGlobals
 import nt.xenforo.meta.XfTagInfo
-import nt.xenforo.meta.XfTags
 import nt.xenforo.index.XfCallableKind
 import nt.xenforo.model.XfAccess
 import nt.xenforo.model.XfCallables
 import nt.xenforo.model.XfMember
 import nt.xenforo.model.XfMemberKind
 import nt.xenforo.model.XfMembers
+import nt.xenforo.model.XfTagCatalog
 import nt.xenforo.psi.XfAccessExpression
 import nt.xenforo.psi.XfAttributeValue
 import nt.xenforo.psi.XfEndTagElement
@@ -72,7 +72,7 @@ private class TagNameProvider : CompletionProvider<CompletionParameters>(), Dumb
             }
             return
         }
-        for (info in XfTags.ALL) {
+        for (info in XfTagCatalog.all(position.project)) {
             result.addElement(tagLookup(info))
         }
     }
@@ -125,7 +125,7 @@ private object ClosingTagInsertHandler : InsertHandler<LookupElement> {
 private class AttributeNameProvider : CompletionProvider<CompletionParameters>(), DumbAware {
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
         val header = PsiTreeUtil.getParentOfType(parameters.position, XfTagHeader::class.java) ?: return
-        val info = XfTags.get(header.tagName) ?: return
+        val info = XfTagCatalog.get(header.project, header.tagName) ?: return
         val existing = header.getAttributeList().map { it.attributeName.lowercase() }.toSet()
         for (name in info.attributes) {
             if (name in existing) continue

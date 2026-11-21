@@ -80,6 +80,13 @@ class XfModelTest : XfTestCase() {
         assertEquals("filterMoney", (target as Method).name)
     }
 
+    fun testCustomFunctionFromArrayRegistrationResolvesToMethod() {
+        myFixture.addFileToProject("src/addons/Demo/Test/Listener.php", LISTENER)
+        configureTemplate("{{ demo_to<caret>tal(\$items) }}")
+        val target = (myFixture.getReferenceAtCaretPositionWithAssertion() as XfCallableReference).resolve()
+        assertEquals("fnTotal", (target as Method).name)
+    }
+
     fun testBuiltinFunctionResolvesToTemplater() {
         configureTemplate("{{ phr<caret>ase('x') }}")
         val target = (myFixture.getReferenceAtCaretPositionWithAssertion() as XfCallableReference).resolve()

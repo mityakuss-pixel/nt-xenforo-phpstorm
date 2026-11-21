@@ -73,7 +73,12 @@ object XfNameSlots {
             tag == "macro" && name == "id" -> macroSlots(value, range.startOffset, type, currentTitle(host))
             tag == "macro" && name == "name" -> {
                 val template = header.findAttribute("template")?.attributeValue?.value
-                listOf(XfNameSlot(XfNameKind.MACRO, range, XfSymbolKeys.macroPrefix(type, template ?: currentTitle(host))))
+                if (template == null) {
+                    macroSlots(value, range.startOffset, type, currentTitle(host))
+                } else {
+                    val (templateType, nameStart) = splitType(template, type)
+                    listOf(XfNameSlot(XfNameKind.MACRO, range, XfSymbolKeys.macroPrefix(templateType, template.substring(nameStart))))
+                }
             }
             tag == "css" && name == "src" -> cssSlots(value, range.startOffset, type)
             else -> emptyList()
