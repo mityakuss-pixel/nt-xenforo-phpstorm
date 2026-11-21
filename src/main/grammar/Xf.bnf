@@ -1,0 +1,249 @@
+{
+  parserClass="nt.xenforo.parser.XfParser"
+  parserUtilClass="nt.xenforo.parser.XfParserUtil"
+
+  extends="com.intellij.extapi.psi.ASTWrapperPsiElement"
+
+  psiClassPrefix="Xf"
+  psiImplClassSuffix="Impl"
+  psiPackage="nt.xenforo.psi"
+  psiImplPackage="nt.xenforo.psi.impl"
+
+  elementTypeHolderClass="nt.xenforo.psi.XfTypes"
+  elementTypeClass="nt.xenforo.psi.XfElementType"
+  tokenTypeClass="nt.xenforo.psi.XfTokenType"
+
+  extends(".*_expr")=expr
+
+  tokens=[
+    CONTENT="template text"
+    COMMENT="comment"
+    TAG_OPEN="<xf:"
+    TAG_CLOSE_OPEN="</xf:"
+    TAG_NAME="tag name"
+    TAG_END=">"
+    TAG_SELF_CLOSE="/>"
+    ATTR_NAME="attribute name"
+    ATTR_EQ="="
+    ATTR_QUOTE="quote"
+    ATTR_TEXT="attribute text"
+    EXPR_START="{{"
+    EXPR_END="}}"
+    VAR_START="{$"
+    VAR_END="closing brace"
+    VARIABLE="variable"
+    IDENTIFIER="identifier"
+    DOT="dot"
+    ARROW="->"
+    PIPE="|"
+    LPAREN="("
+    RPAREN=")"
+    LBRACKET="["
+    RBRACKET="]"
+    LBRACE="{"
+    RBRACE="}"
+    COMMA=","
+    COLON=":"
+    QUESTION="?"
+    ELVIS="?:"
+    COALESCE="??"
+    PLUS="+"
+    MINUS="-"
+    STAR="*"
+    SLASH="/"
+    PERCENT="%"
+    CONCAT="."
+    EQEQ="=="
+    NOT_EQ="!="
+    IDENTICAL="==="
+    NOT_IDENTICAL="!=="
+    GT="greater than"
+    GE=">="
+    LT="<"
+    LE="<="
+    NOT="!"
+    AND="&&"
+    OR="||"
+    IS="is"
+    IS_NOT="is not"
+    INSTANCEOF="instanceof"
+    NUMBER="number"
+    STRING="string"
+    DQ="double quote"
+    STRING_TEXT="string text"
+    TRUE="true"
+    FALSE="false"
+    NULL="null"
+  ]
+}
+
+xf_file ::= root_item*
+
+private root_item ::= statement | end_tag | <<errorToken>>
+
+private statement ::= CONTENT | tag | expression_block | var_block
+
+tag ::= start_tag tag_block? {
+  implements="nt.xenforo.psi.XfTagElement"
+  mixin="nt.xenforo.psi.impl.XfTagMixin"
+}
+
+private tag_block ::= <<afterBlockOpen>> tag_content* end_tag?
+
+private tag_content ::= branch_tag | body
+
+start_tag ::= TAG_OPEN TAG_NAME attribute* tag_header_end {
+  pin=1
+  implements="nt.xenforo.psi.XfTagHeader"
+  mixin="nt.xenforo.psi.impl.XfTagHeaderMixin"
+}
+
+private tag_header_end ::= TAG_SELF_CLOSE | TAG_END
+
+branch_tag ::= <<branchTagAhead>> TAG_OPEN TAG_NAME attribute* TAG_SELF_CLOSE {
+  pin=1
+  implements="nt.xenforo.psi.XfTagHeader"
+  mixin="nt.xenforo.psi.impl.XfTagHeaderMixin"
+}
+
+end_tag ::= TAG_CLOSE_OPEN TAG_NAME TAG_END {
+  pin=1
+  implements="nt.xenforo.psi.XfEndTagElement"
+  mixin="nt.xenforo.psi.impl.XfEndTagMixin"
+}
+
+body ::= body_item+
+
+private body_item ::= !(TAG_CLOSE_OPEN | <<branchTagAhead>>) (statement | <<errorToken>>)
+
+attribute ::= ATTR_NAME ATTR_EQ attribute_value {
+  pin=1
+  implements="nt.xenforo.psi.XfAttributeElement"
+  mixin="nt.xenforo.psi.impl.XfAttributeMixin"
+}
+
+attribute_value ::= ATTR_QUOTE attribute_content ATTR_QUOTE {
+  pin=1
+  implements="nt.xenforo.psi.XfReferenceHost"
+  mixin="nt.xenforo.psi.impl.XfAttributeValueMixin"
+}
+
+private attribute_content ::= <<expressionAttributeAhead>> expression_attribute_content | text_attribute_content
+
+private expression_attribute_content ::= expr? {recoverWhile=attribute_content_recover}
+
+private text_attribute_content ::= (ATTR_TEXT | var_block | expression_block)* {recoverWhile=attribute_content_recover}
+
+private attribute_content_recover ::= !(ATTR_QUOTE | TAG_END | TAG_SELF_CLOSE | TAG_OPEN | TAG_CLOSE_OPEN | CONTENT)
+
+expression_block ::= EXPR_START expression_block_content EXPR_END {
+  pin=1
+  extends=expr
+}
+
+private expression_block_content ::= expr {recoverWhile=expression_block_recover}
+
+private expression_block_recover ::= !(EXPR_END | TAG_OPEN | TAG_CLOSE_OPEN | CONTENT | ATTR_QUOTE | ATTR_TEXT | TAG_END | TAG_SELF_CLOSE | DQ | STRING_TEXT)
+
+var_block ::= VAR_START VARIABLE variable_accessor* filter* VAR_END {
+  pin=1
+  extends=expr
+}
+
+expr ::= or_expr
+  | and_expr
+  | coalesce_expr
+  | conditional_group
+  | comparison_group
+  | additive_expr
+  | multiplicative_expr
+  | unary_group
+  | instanceof_expr
+  | filter_expr
+  | primary_group
+
+or_expr ::= expr OR expr
+
+and_expr ::= expr AND expr
+
+coalesce_expr ::= expr COALESCE expr {rightAssociative=true}
+
+private conditional_group ::= ternary_expr | elvis_expr
+
+ternary_expr ::= expr QUESTION expr COLON expr
+
+elvis_expr ::= expr ELVIS expr
+
+private comparison_group ::= comparison_expr | test_expr
+
+comparison_expr ::= expr comparison_operator expr
+
+private comparison_operator ::= EQEQ | NOT_EQ | IDENTICAL | NOT_IDENTICAL | GT | GE | LT | LE
+
+test_expr ::= expr (IS | IS_NOT) IDENTIFIER arguments?
+
+additive_expr ::= expr (PLUS | MINUS | CONCAT) expr
+
+multiplicative_expr ::= expr (STAR | SLASH | PERCENT) expr
+
+private unary_group ::= negation_expr | not_expr
+
+negation_expr ::= MINUS expr
+
+not_expr ::= NOT expr
+
+instanceof_expr ::= expr INSTANCEOF expr
+
+filter_expr ::= expr filter+
+
+private primary_group ::= literal_expr
+  | string_expr
+  | double_quoted_expr
+  | function_call_expr
+  | variable_expr
+  | var_block
+  | expression_block
+  | paren_expr
+  | array_expr
+  | hash_expr
+
+literal_expr ::= NUMBER | TRUE | FALSE | NULL
+
+string_expr ::= STRING {
+  implements="nt.xenforo.psi.XfReferenceHost"
+  mixin="nt.xenforo.psi.impl.XfStringExprMixin"
+}
+
+double_quoted_expr ::= DQ (STRING_TEXT | var_block | expression_block)* DQ {pin=1}
+
+function_call_expr ::= IDENTIFIER arguments {
+  pin=1
+  implements="nt.xenforo.psi.XfNamedCall"
+  mixin="nt.xenforo.psi.impl.XfNamedCallMixin"
+}
+
+variable_expr ::= VARIABLE variable_accessor*
+
+private variable_accessor ::= (DOT | ARROW) accessor_target {pin=1}
+
+private accessor_target ::= IDENTIFIER arguments? | var_block | expression_block
+
+filter ::= PIPE IDENTIFIER arguments? {
+  pin=1
+  implements="nt.xenforo.psi.XfNamedCall"
+  mixin="nt.xenforo.psi.impl.XfNamedCallMixin"
+}
+
+arguments ::= LPAREN argument_list? RPAREN {pin=1}
+
+private argument_list ::= expr (COMMA expr)* {pin(".*")=1}
+
+paren_expr ::= LPAREN expr RPAREN {pin=1}
+
+array_expr ::= LBRACKET argument_list? RBRACKET {pin=1}
+
+hash_expr ::= LBRACE hash_entries? RBRACE {pin=1}
+
+private hash_entries ::= hash_entry (COMMA hash_entry)* {pin(".*")=1}
+
+hash_entry ::= expr COLON expr {pin=2}

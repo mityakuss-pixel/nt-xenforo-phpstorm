@@ -1,0 +1,65 @@
+<idea-plugin>
+    <id>nt.xenforo</id>
+    <name>XenForo Templates</name>
+    <vendor url="https://github.com/mityakuss-pixel/nt-xenforo-phpstorm">nt</vendor>
+    <description><![CDATA[
+<p>Support for <a href="https://xenforo.com">XenForo 2</a> templates for add-on and style developers.</p>
+<p>Templates in the development output of add-ons (<code>_output/templates/public</code>, <code>admin</code> and <code>email</code>)
+open as XenForo templates: HTML with the template syntax on top.</p>
+<ul>
+  <li>Highlighting of <code>&lt;xf:…&gt;</code> tags, <code>{{ … }}</code> expressions and <code>{$…}</code> variables,
+      with HTML, CSS and JavaScript inside working as usual</li>
+  <li>No false errors on template constructs: <code>{{ link(…) }}</code> in attributes, tags inside markup,
+      <code>&lt;xf:else /&gt;</code> branches that open different HTML</li>
+  <li>Formatting with tabs, where <code>&lt;xf:else /&gt;</code> and <code>&lt;xf:elseif /&gt;</code> line up with their <code>&lt;xf:if&gt;</code></li>
+  <li>Completion of tags, attributes, functions with parameters, filters, variables and <code>$xf</code> keys</li>
+  <li>Completion and Ctrl+Click for templates, macros, phrases, routes and style properties from <code>_output</code> and <code>_data</code></li>
+  <li>Errors the template compiler would report: unclosed and mismatched tags, misplaced <code>&lt;xf:else /&gt;</code>,
+      unknown tags, unfinished expressions</li>
+  <li>Auto-closing of <code>{{ }}</code> and block tags, folding and <code>&lt;xf:comment&gt;</code> commenting</li>
+</ul>
+    ]]></description>
+
+    <resource-bundle>messages.XfBundle</resource-bundle>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.xml</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <fileType name="XenForo Template" language="XenForoTemplate" fieldName="INSTANCE"
+                  implementationClass="nt.xenforo.lang.XfFileType"/>
+        <lang.substitutor language="HTML" implementationClass="nt.xenforo.lang.XfLanguageSubstitutor"/>
+        <lang.parserDefinition language="XenForoTemplate" implementationClass="nt.xenforo.parser.XfParserDefinition"/>
+        <lang.fileViewProviderFactory language="XenForoTemplate" implementationClass="nt.xenforo.lang.XfFileViewProviderFactory"/>
+
+        <lang.syntaxHighlighterFactory language="XenForoTemplate" implementationClass="nt.xenforo.highlight.XfSyntaxHighlighterFactory"/>
+        <editorHighlighterProvider filetype="XenForo Template" implementationClass="nt.xenforo.highlight.XfEditorHighlighterProvider"/>
+        <colorSettingsPage implementation="nt.xenforo.highlight.XfColorSettingsPage"/>
+        <annotator language="XenForoTemplate" implementationClass="nt.xenforo.highlight.XfAnnotator"/>
+        <highlightErrorFilter implementation="nt.xenforo.highlight.XfErrorFilter"/>
+        <localInspection language="XenForoTemplate" shortName="XfUnknownTag" enabledByDefault="true" level="WARNING"
+                         key="inspection.unknown.tag.display.name" groupKey="inspection.group.name"
+                         implementationClass="nt.xenforo.inspection.XfUnknownTagInspection"/>
+
+        <fileBasedIndex implementation="nt.xenforo.index.XfSymbolIndex"/>
+        <psi.referenceContributor language="XenForoTemplate" implementation="nt.xenforo.reference.XfReferenceContributor"/>
+        <lang.elementManipulator forClass="nt.xenforo.psi.XfAttributeValue" implementationClass="nt.xenforo.reference.XfAttributeValueManipulator"/>
+        <lang.elementManipulator forClass="nt.xenforo.psi.XfStringExpr" implementationClass="nt.xenforo.reference.XfStringExprManipulator"/>
+        <completion.contributor language="XenForoTemplate" implementationClass="nt.xenforo.completion.XfCompletionContributor"/>
+        <completion.confidence language="XenForoTemplate" order="first" implementationClass="nt.xenforo.completion.XfCompletionConfidence"/>
+        <xml.tagNameProvider implementation="nt.xenforo.editor.XfHtmlTagNameProvider"/>
+        <typedHandler implementation="nt.xenforo.editor.XfTypedHandler"/>
+        <enterHandlerDelegate implementation="nt.xenforo.editor.XfEnterHandler"/>
+        <lang.braceMatcher language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfBraceMatcher"/>
+        <lang.quoteHandler language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfQuoteHandler"/>
+        <lang.foldingBuilder language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfFoldingBuilder"/>
+        <lang.commenter language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfCommenter"/>
+        <multiLangCommenter implementation="nt.xenforo.editor.XfMultipleLangCommentProvider"/>
+
+        <lang.formatter language="XenForoTemplate" implementationClass="nt.xenforo.format.XfFormattingModelBuilder"/>
+        <codeStyleSettingsProvider implementation="nt.xenforo.format.XfCodeStyleSettingsProvider"/>
+        <langCodeStyleSettingsProvider implementation="nt.xenforo.format.XfLanguageCodeStyleSettingsProvider"/>
+        <fileIndentOptionsProvider implementation="nt.xenforo.format.XfFileIndentOptionsProvider"/>
+    </extensions>
+</idea-plugin>
