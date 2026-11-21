@@ -32,6 +32,26 @@ data class XfNameSlot(
 private val ROUTE_MODIFIER = Regex("""^[a-z_]+:""")
 private val INCLUDE_TAGS = setOf("include", "wrap", "extends")
 
+object XfPhraseNames {
+    private const val ELLIPSIS = "..."
+    private const val SUFFIXES = ":,)("
+
+    fun effectiveRange(name: String): IntRange {
+        val start = if (name.startsWith('(')) 1 else 0
+        var end = name.length
+        while (end > start) {
+            end = when {
+                end - start >= ELLIPSIS.length && name.startsWith(ELLIPSIS, end - ELLIPSIS.length) -> end - ELLIPSIS.length
+                name[end - 1] in SUFFIXES -> end - 1
+                else -> break
+            }
+        }
+        return start until end
+    }
+
+    fun effective(name: String): String = name.substring(effectiveRange(name))
+}
+
 object XfNameSlots {
     fun of(host: XfReferenceHost): List<XfNameSlot> = when (host) {
         is XfStringExpr -> stringSlots(host)
@@ -108,8 +128,11 @@ object XfNameSlots {
         val value = host.value
         val type = currentType(host)
         return when (call.callName.lowercase() to index) {
-            "phrase" to 0, "phrase_dynamic" to 0, "is_phrase" to 0 ->
-                listOf(XfNameSlot(XfNameKind.PHRASE, range, XfSymbolKeys.PHRASE_PREFIX))
+            "phrase" to 0, "phrase_dynamic" to 0, "is_phrase" to 0 -> {
+                val effective = XfPhraseNames.effectiveRange(value)
+                val slotRange = TextRange(range.startOffset + effective.first, range.startOffset + effective.last + 1)
+                listOf(XfNameSlot(XfNameKind.PHRASE, slotRange, XfSymbolKeys.PHRASE_PREFIX))
+            }
             "property" to 0, "property_variation" to 0 ->
                 listOf(XfNameSlot(XfNameKind.PROPERTY, range, XfSymbolKeys.PROPERTY_PREFIX))
             "include" to 0, "call_macro" to 0 ->

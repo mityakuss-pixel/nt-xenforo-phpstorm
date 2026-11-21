@@ -11,7 +11,7 @@ import nt.xenforo.psi.XfTokenSets
 
 private const val RUNTIME_PLACEHOLDER = "<!--XF:"
 
-class XfErrorFilter : TemplateLanguageErrorFilter(XfTokenSets.TEMPLATE_EDGES, XfFileViewProvider::class.java, "HTML") {
+class XfErrorFilter : TemplateLanguageErrorFilter(XfTokenSets.TEMPLATE_EDGES, XfFileViewProvider::class.java, "HTML", "CSS", "LESS") {
     override fun shouldHighlightErrorElement(element: PsiErrorElement): Boolean {
         if (!super.shouldHighlightErrorElement(element)) return false
         val provider = element.containingFile?.viewProvider as? XfFileViewProvider ?: return true

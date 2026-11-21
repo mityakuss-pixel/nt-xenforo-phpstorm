@@ -40,6 +40,8 @@ import nt.xenforo.meta.XfTags
 import nt.xenforo.psi.XfTagElement
 import nt.xenforo.psi.XfTypes
 
+private val ACCESS_OWNERS = setOf(XfTypes.VARIABLE, XfTypes.IDENTIFIER, XfTypes.RPAREN)
+
 private fun isTemplate(file: PsiFile): Boolean = file.viewProvider is XfFileViewProvider
 
 private fun baseElementAt(file: PsiFile, offset: Int): PsiElement? =
@@ -53,6 +55,7 @@ class XfTypedHandler : TypedHandlerDelegate() {
         val popup = when (charTyped) {
             ':' -> text.endsWithAt(offset, "<xf") || text.endsWithAt(offset, "</xf")
             '|', '$' -> baseElementAt(file, maxOf(0, offset - 1))?.language == XfLanguage
+            '.' -> baseElementAt(file, maxOf(0, offset - 1))?.elementType in ACCESS_OWNERS
             else -> false
         }
         if (!popup) return Result.CONTINUE
@@ -65,6 +68,9 @@ class XfTypedHandler : TypedHandlerDelegate() {
         when (c) {
             '{' -> closeExpression(editor)
             '>' -> closeTag(project, editor, file)
+            '(' -> if (baseElementAt(file, maxOf(0, editor.caretModel.offset - 2))?.elementType == XfTypes.IDENTIFIER) {
+                AutoPopupController.getInstance(project).autoPopupParameterInfo(editor, null)
+            }
         }
         return Result.CONTINUE
     }

@@ -5,15 +5,22 @@
     <description><![CDATA[
 <p>Support for <a href="https://xenforo.com">XenForo 2</a> templates for add-on and style developers.</p>
 <p>Templates in the development output of add-ons (<code>_output/templates/public</code>, <code>admin</code> and <code>email</code>)
-open as XenForo templates: HTML with the template syntax on top.</p>
+open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p>
 <ul>
   <li>Highlighting of <code>&lt;xf:…&gt;</code> tags, <code>{{ … }}</code> expressions and <code>{$…}</code> variables,
-      with HTML, CSS and JavaScript inside working as usual</li>
+      with HTML, CSS, LESS and JavaScript inside working as usual</li>
   <li>No false errors on template constructs: <code>{{ link(…) }}</code> in attributes, tags inside markup,
-      <code>&lt;xf:else /&gt;</code> branches that open different HTML</li>
+      <code>&lt;xf:else /&gt;</code> branches that open different HTML, template tags inside styles</li>
+  <li>LESS templates see what <code>XF\CssRenderer</code> adds: <code>setup.less</code>, <code>&lt;prefix&gt;_prepend.less</code>,
+      included templates, <code>@xf-…</code> style properties</li>
   <li>Formatting with tabs, where <code>&lt;xf:else /&gt;</code> and <code>&lt;xf:elseif /&gt;</code> line up with their <code>&lt;xf:if&gt;</code></li>
-  <li>Completion of tags, attributes, functions with parameters, filters, variables and <code>$xf</code> keys</li>
-  <li>Completion and Ctrl+Click for templates, macros, phrases, routes and style properties from <code>_output</code> and <code>_data</code></li>
+  <li>Completion of tags, attributes, functions with parameters, filters, variables and <code>$xf</code> members:
+      entity columns, relations and methods, board options and sub-options</li>
+  <li>Template functions, filters and tests registered by add-ons in PHP</li>
+  <li>Completion and Ctrl+Click for templates, macros, phrases, routes, options and style properties from <code>_output</code> and <code>_data</code>,
+      and for PHP fields, methods and template function implementations</li>
+  <li>Quick documentation, parameter info and phrase text hints after <code>phrase()</code></li>
+  <li>Structure view with <code>&lt;xf:…&gt;</code> tags and macros</li>
   <li>Errors the template compiler would report: unclosed and mismatched tags, misplaced <code>&lt;xf:else /&gt;</code>,
       unknown tags, unfinished expressions</li>
   <li>Auto-closing of <code>{{ }}</code> and block tags, folding and <code>&lt;xf:comment&gt;</code> commenting</li>
@@ -25,6 +32,9 @@ open as XenForo templates: HTML with the template syntax on top.</p>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
     <depends>com.intellij.modules.xml</depends>
+    <depends>com.jetbrains.php</depends>
+    <depends optional="true" config-file="nt-xenforo-css.xml">com.intellij.css</depends>
+    <depends optional="true" config-file="nt-xenforo-less.xml">org.jetbrains.plugins.less</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="XenForo Template" language="XenForoTemplate" fieldName="INSTANCE"
@@ -43,9 +53,17 @@ open as XenForo templates: HTML with the template syntax on top.</p>
                          implementationClass="nt.xenforo.inspection.XfUnknownTagInspection"/>
 
         <fileBasedIndex implementation="nt.xenforo.index.XfSymbolIndex"/>
+        <fileBasedIndex implementation="nt.xenforo.index.XfTemplaterIndex"/>
         <psi.referenceContributor language="XenForoTemplate" implementation="nt.xenforo.reference.XfReferenceContributor"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAttributeValue" implementationClass="nt.xenforo.reference.XfAttributeValueManipulator"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfStringExpr" implementationClass="nt.xenforo.reference.XfStringExprManipulator"/>
+        <lang.elementManipulator forClass="nt.xenforo.psi.XfAccessExpression" implementationClass="nt.xenforo.reference.XfAccessExpressionManipulator"/>
+        <platform.backend.documentation.targetProvider implementation="nt.xenforo.documentation.XfDocumentationTargetProvider"/>
+        <codeInsight.parameterInfo language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfParameterInfoHandler"/>
+        <codeInsight.declarativeInlayProvider language="XenForoTemplate" providerId="nt.xenforo.phrase.text" isEnabledByDefault="true"
+                                              group="VALUES_GROUP" bundle="messages.XfBundle" nameKey="inlay.phrase.name"
+                                              descriptionKey="inlay.phrase.description"
+                                              implementationClass="nt.xenforo.editor.XfPhraseInlayHintsProvider"/>
         <completion.contributor language="XenForoTemplate" implementationClass="nt.xenforo.completion.XfCompletionContributor"/>
         <completion.confidence language="XenForoTemplate" order="first" implementationClass="nt.xenforo.completion.XfCompletionConfidence"/>
         <xml.tagNameProvider implementation="nt.xenforo.editor.XfHtmlTagNameProvider"/>
@@ -53,6 +71,7 @@ open as XenForo templates: HTML with the template syntax on top.</p>
         <enterHandlerDelegate implementation="nt.xenforo.editor.XfEnterHandler"/>
         <lang.braceMatcher language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfBraceMatcher"/>
         <lang.quoteHandler language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfQuoteHandler"/>
+        <lang.psiStructureViewFactory language="XenForoTemplate" implementationClass="nt.xenforo.structure.XfStructureViewFactory"/>
         <lang.foldingBuilder language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfFoldingBuilder"/>
         <lang.commenter language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfCommenter"/>
         <multiLangCommenter implementation="nt.xenforo.editor.XfMultipleLangCommentProvider"/>

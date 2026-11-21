@@ -22,6 +22,7 @@ import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
 import nt.xenforo.lexer.XfLexerAdapter
 import nt.xenforo.psi.XfTokenSets
+import nt.xenforo.lang.XfTemplateFiles
 import nt.xenforo.psi.XfTypes
 
 object XfHighlighterColors {
@@ -89,8 +90,11 @@ class XfSyntaxHighlighterFactory : SyntaxHighlighterFactory() {
 class XfEditorHighlighter(project: Project?, file: VirtualFile?, colors: EditorColorsScheme) :
     LayeredLexerEditorHighlighter(XfSyntaxHighlighter(), colors) {
     init {
-        val html = SyntaxHighlighterFactory.getSyntaxHighlighter(HtmlFileType.INSTANCE, project, file) ?: PlainSyntaxHighlighter()
-        registerLayer(XfTypes.CONTENT, LayerDescriptor(html, ""))
+        val language = file?.let(XfTemplateFiles::dataLanguage)
+        val data = language?.let { SyntaxHighlighterFactory.getSyntaxHighlighter(it, project, file) }
+            ?: SyntaxHighlighterFactory.getSyntaxHighlighter(HtmlFileType.INSTANCE, project, file)
+            ?: PlainSyntaxHighlighter()
+        registerLayer(XfTypes.CONTENT, LayerDescriptor(data, ""))
     }
 }
 

@@ -39,7 +39,15 @@ interface XfReferenceHost : ContributedReferenceHost {
     val value: String
 }
 
-interface XfNamedCall : PsiElement {
+class XfAccessSegment(val name: String?, val element: PsiElement, val isCall: Boolean)
+
+interface XfAccessExpression : ContributedReferenceHost {
+    val variableElement: PsiElement?
+    val variableName: String
+    val segments: List<XfAccessSegment>
+}
+
+interface XfNamedCall : ContributedReferenceHost {
     val callName: String
     val callNameElement: PsiElement?
 }

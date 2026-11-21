@@ -1,5 +1,6 @@
 package nt.xenforo.completion
 
+import com.intellij.codeInsight.AutoPopupController
 import com.intellij.codeInsight.completion.CompletionContributor
 import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
@@ -9,20 +10,31 @@ import com.intellij.codeInsight.completion.InsertHandler
 import com.intellij.codeInsight.completion.InsertionContext
 import com.intellij.codeInsight.lookup.LookupElement
 import com.intellij.codeInsight.lookup.LookupElementBuilder
+import com.intellij.codeInsight.lookup.LookupElementPresentation
+import com.intellij.codeInsight.lookup.LookupElementRenderer
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.Project
 import com.intellij.patterns.PlatformPatterns.psiElement
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
-import com.intellij.psi.TokenType
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import com.intellij.util.ProcessingContext
+import javax.swing.Icon
+import nt.xenforo.index.XfSymbolKeys
+import nt.xenforo.index.XfSymbols
 import nt.xenforo.lang.XfIcons
-import nt.xenforo.meta.XfBuiltins
 import nt.xenforo.meta.XfGlobals
 import nt.xenforo.meta.XfTagInfo
 import nt.xenforo.meta.XfTags
+import nt.xenforo.index.XfCallableKind
+import nt.xenforo.model.XfAccess
+import nt.xenforo.model.XfCallables
+import nt.xenforo.model.XfMember
+import nt.xenforo.model.XfMemberKind
+import nt.xenforo.model.XfMembers
+import nt.xenforo.psi.XfAccessExpression
 import nt.xenforo.psi.XfAttributeValue
 import nt.xenforo.psi.XfEndTagElement
 import nt.xenforo.psi.XfStringExpr
@@ -142,31 +154,58 @@ private class IdentifierProvider : CompletionProvider<CompletionParameters>(), D
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
         val position = parameters.position
         when (val parent = position.parent) {
-            is XfFilter -> addCallables(result, XfBuiltins.FILTERS, AllIcons.Nodes.Method, requiredOnly = true)
-            is XfTestExpr -> addCallables(result, XfBuiltins.TESTS, AllIcons.Nodes.Method, requiredOnly = true)
-            is XfFunctionCallExpr -> if (parent.callNameElement == position) addCallables(result, XfBuiltins.FUNCTIONS, AllIcons.Nodes.Function, requiredOnly = false)
+            is XfFilter -> addCallables(position, result, XfCallableKind.FILTER, AllIcons.Nodes.Method, requiredOnly = true)
+            is XfTestExpr -> addCallables(position, result, XfCallableKind.TEST, AllIcons.Nodes.Method, requiredOnly = true)
+            is XfFunctionCallExpr -> if (parent.callNameElement == position) addCallables(position, result, XfCallableKind.FUNCTION, AllIcons.Nodes.Function, requiredOnly = false)
             else -> addAccessors(position, result)
         }
     }
 
     private fun addAccessors(position: PsiElement, result: CompletionResultSet) {
-        val previous = previousToken(position) ?: return
-        if (previous.elementType != XfTypes.DOT && previous.elementType != XfTypes.ARROW) return
-        val owner = previousToken(previous) ?: return
-        if (owner.elementType != XfTypes.VARIABLE || owner.text.removePrefix("$") != "xf") return
-        for (key in XfGlobals.XF_KEYS) {
-            result.addElement(LookupElementBuilder.create(key).withIcon(AllIcons.Nodes.Property))
+        val expression = position.parent as? XfAccessExpression ?: return
+        val index = XfAccess.segmentIndex(expression, position)
+        if (index < 0) return
+        val project = position.project
+        val owner = XfAccess.ownerType(project, expression, index) ?: return
+        for (member in XfMembers.of(project, owner)) {
+            result.addElement(memberLookup(project, member))
         }
     }
 
-    private fun addCallables(result: CompletionResultSet, callables: Map<String, String>, icon: javax.swing.Icon, requiredOnly: Boolean) {
-        for ((name, signature) in callables) {
+    private fun memberLookup(project: Project, member: XfMember): LookupElement {
+        val icon = if (member.kind == XfMemberKind.METHOD) AllIcons.Nodes.Method else AllIcons.Nodes.Property
+        var builder = LookupElementBuilder.create(member, member.name).withIcon(icon)
+        if (member.kind == XfMemberKind.METHOD) {
+            builder = builder
+                .withTailText("(${member.parameters.orEmpty()})", true)
+                .withInsertHandler(ParenthesesInsertHandler(!member.parameters.isNullOrEmpty()))
+        }
+        return if (member.kind == XfMemberKind.OPTION) {
+            builder.withExpensiveRenderer(OptionRenderer(project, icon))
+        } else {
+            builder.withTypeText(member.typeText, true)
+        }
+    }
+
+    private fun addCallables(position: PsiElement, result: CompletionResultSet, kind: XfCallableKind, icon: Icon, requiredOnly: Boolean) {
+        for ((name, signature) in XfCallables.builtins(kind)) {
             val needsParentheses = !requiredOnly || hasRequiredParameter(signature)
             result.addElement(
                 LookupElementBuilder.create(name)
                     .withIcon(icon)
                     .withTailText("($signature)", true)
                     .withInsertHandler(if (needsParentheses) ParenthesesInsertHandler(signature.isNotEmpty()) else null),
+            )
+        }
+        val project = position.project
+        for (name in XfCallables.customNames(project, kind)) {
+            val location = XfCallables.registration(project, kind, name) ?: continue
+            result.addElement(
+                LookupElementBuilder.create(location.symbol.detail.ifEmpty { name })
+                    .withIcon(icon)
+                    .withTypeText(location.addOnId, true)
+                    .withInsertHandler(ParenthesesInsertHandler(true).takeIf { !requiredOnly })
+                    .withExpensiveRenderer(CallableRenderer(project, kind, icon, location.addOnId)),
             )
         }
     }
@@ -182,12 +221,39 @@ private class ParenthesesInsertHandler(private val hasParameters: Boolean) : Ins
         val tail = context.tailOffset
         if (document.charsSequence.getOrNull(tail) == '(') {
             context.editor.caretModel.moveToOffset(tail + 1)
-            return
+        } else {
+            document.insertString(tail, "()")
+            context.editor.caretModel.moveToOffset(if (hasParameters) tail + 1 else tail + 2)
         }
-        document.insertString(tail, "()")
-        context.editor.caretModel.moveToOffset(if (hasParameters) tail + 1 else tail + 2)
+        if (hasParameters) AutoPopupController.getInstance(context.project).autoPopupParameterInfo(context.editor, null)
     }
 }
+
+private class CallableRenderer(
+    private val project: Project,
+    private val kind: XfCallableKind,
+    private val icon: Icon,
+    private val addOnId: String?,
+) : LookupElementRenderer<LookupElement>() {
+    override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
+        presentation.itemText = element.lookupString
+        presentation.icon = icon
+        presentation.setTypeText(addOnId)
+        val parameters = XfCallables.parameters(project, kind, element.lookupString) ?: return
+        presentation.setTailText("(${parameters.joinToString(", ")})", true)
+    }
+}
+
+private class OptionRenderer(private val project: Project, private val icon: Icon) : LookupElementRenderer<LookupElement>() {
+    override fun renderElement(element: LookupElement, presentation: LookupElementPresentation) {
+        presentation.itemText = element.lookupString
+        presentation.icon = icon
+        val title = XfSymbols.detail(project, XfSymbolKeys.phrase(OPTION_TITLE_PREFIX + element.lookupString))
+        presentation.setTypeText(title?.ifEmpty { null } ?: (element.`object` as? XfMember)?.typeText)
+    }
+}
+
+const val OPTION_TITLE_PREFIX: String = "option."
 
 private class VariableProvider : CompletionProvider<CompletionParameters>(), DumbAware {
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
@@ -211,10 +277,4 @@ private class VariableProvider : CompletionProvider<CompletionParameters>(), Dum
             true
         }
     }
-}
-
-private fun previousToken(element: PsiElement): PsiElement? {
-    var current: PsiElement? = PsiTreeUtil.prevLeaf(element)
-    while (current != null && current.elementType == TokenType.WHITE_SPACE) current = PsiTreeUtil.prevLeaf(current)
-    return current
 }

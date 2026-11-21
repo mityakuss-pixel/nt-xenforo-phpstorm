@@ -6,8 +6,10 @@ import com.intellij.psi.AbstractElementManipulator
 import com.intellij.psi.PsiFileFactory
 import com.intellij.psi.util.PsiTreeUtil
 import nt.xenforo.lang.XfLanguage
+import nt.xenforo.psi.XfAccessExpression
 import nt.xenforo.psi.XfAttributeValue
 import nt.xenforo.psi.XfStringExpr
+import nt.xenforo.psi.XfVarBlock
 
 class XfAttributeValueManipulator : AbstractElementManipulator<XfAttributeValue>() {
     override fun handleContentChange(element: XfAttributeValue, range: TextRange, newContent: String): XfAttributeValue {
@@ -28,6 +30,15 @@ class XfStringExprManipulator : AbstractElementManipulator<XfStringExpr>() {
     }
 
     override fun getRangeInElement(element: XfStringExpr): TextRange = element.valueRange
+}
+
+class XfAccessExpressionManipulator : AbstractElementManipulator<XfAccessExpression>() {
+    override fun handleContentChange(element: XfAccessExpression, range: TextRange, newContent: String): XfAccessExpression {
+        val text = range.replace(element.text, newContent)
+        val source = if (element is XfVarBlock) text else "{{ $text }}"
+        val replacement = createElement(element.project, source, element.javaClass)
+        return element.replace(replacement) as XfAccessExpression
+    }
 }
 
 private fun <T : com.intellij.psi.PsiElement> createElement(project: Project, text: String, type: Class<T>): T {

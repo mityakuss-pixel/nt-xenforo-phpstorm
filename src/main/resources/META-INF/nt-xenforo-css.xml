@@ -1,0 +1,5 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <lang.substitutor language="CSS" implementationClass="nt.xenforo.lang.XfLanguageSubstitutor"/>
+    </extensions>
+</idea-plugin>

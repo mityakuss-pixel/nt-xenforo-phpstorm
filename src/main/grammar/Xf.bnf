@@ -148,6 +148,8 @@ private expression_block_recover ::= !(EXPR_END | TAG_OPEN | TAG_CLOSE_OPEN | CO
 var_block ::= VAR_START VARIABLE variable_accessor* filter* VAR_END {
   pin=1
   extends=expr
+  implements="nt.xenforo.psi.XfAccessExpression"
+  mixin="nt.xenforo.psi.impl.XfAccessExpressionMixin"
 }
 
 expr ::= or_expr
@@ -222,7 +224,10 @@ function_call_expr ::= IDENTIFIER arguments {
   mixin="nt.xenforo.psi.impl.XfNamedCallMixin"
 }
 
-variable_expr ::= VARIABLE variable_accessor*
+variable_expr ::= VARIABLE variable_accessor* {
+  implements="nt.xenforo.psi.XfAccessExpression"
+  mixin="nt.xenforo.psi.impl.XfAccessExpressionMixin"
+}
 
 private variable_accessor ::= (DOT | ARROW) accessor_target {pin=1}
 

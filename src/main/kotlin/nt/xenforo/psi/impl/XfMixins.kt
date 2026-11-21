@@ -5,7 +5,10 @@ import com.intellij.lang.ASTNode
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiReference
+import com.intellij.psi.TokenType
 import com.intellij.psi.impl.source.resolve.reference.ReferenceProvidersRegistry
+import nt.xenforo.psi.XfAccessExpression
+import nt.xenforo.psi.XfAccessSegment
 import nt.xenforo.psi.XfAttribute
 import nt.xenforo.psi.XfAttributeElement
 import nt.xenforo.psi.XfEndTagElement
@@ -93,12 +96,55 @@ abstract class XfStringExprMixin(node: ASTNode) : ASTWrapperPsiElement(node), Xf
     override fun getReferences(): Array<PsiReference> = ReferenceProvidersRegistry.getReferencesFromProviders(this)
 }
 
+abstract class XfAccessExpressionMixin(node: ASTNode) : ASTWrapperPsiElement(node), XfAccessExpression {
+    override val variableElement: PsiElement?
+        get() = node.findChildByType(XfTypes.VARIABLE)?.psi
+
+    override val variableName: String
+        get() = variableElement?.text?.removePrefix("$").orEmpty()
+
+    override val segments: List<XfAccessSegment>
+        get() {
+            val result = ArrayList<XfAccessSegment>()
+            var child = node.findChildByType(XfTypes.VARIABLE)?.treeNext
+            while (child != null) {
+                val type = child.elementType
+                if (type == TokenType.WHITE_SPACE) {
+                    child = child.treeNext
+                    continue
+                }
+                if (type != XfTypes.DOT && type != XfTypes.ARROW) break
+                val target = significant(child.treeNext) ?: break
+                if (target.elementType == XfTypes.IDENTIFIER) {
+                    val after = significant(target.treeNext)
+                    val isCall = after?.elementType == XfTypes.ARGUMENTS
+                    result += XfAccessSegment(target.text, target.psi, isCall)
+                    child = (if (isCall) after else target).treeNext
+                } else {
+                    result += XfAccessSegment(null, target.psi, false)
+                    child = target.treeNext
+                }
+            }
+            return result
+        }
+
+    override fun getReferences(): Array<PsiReference> = ReferenceProvidersRegistry.getReferencesFromProviders(this)
+}
+
+private fun significant(start: ASTNode?): ASTNode? {
+    var current = start
+    while (current != null && current.elementType == TokenType.WHITE_SPACE) current = current.treeNext
+    return current
+}
+
 abstract class XfNamedCallMixin(node: ASTNode) : ASTWrapperPsiElement(node), XfNamedCall {
     override val callNameElement: PsiElement?
         get() = node.findChildByType(XfTypes.IDENTIFIER)?.psi
 
     override val callName: String
         get() = callNameElement?.text.orEmpty()
+
+    override fun getReferences(): Array<PsiReference> = ReferenceProvidersRegistry.getReferencesFromProviders(this)
 }
 
 private fun quotedContentRange(node: ASTNode, quoteType: com.intellij.psi.tree.IElementType): TextRange {

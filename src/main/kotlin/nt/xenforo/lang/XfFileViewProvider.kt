@@ -26,9 +26,11 @@ class XfFileViewProvider(manager: PsiManager, file: VirtualFile, eventSystemEnab
 
     override fun getBaseLanguage(): Language = XfLanguage
 
-    override fun getTemplateDataLanguage(): Language = HTMLLanguage.INSTANCE
+    private val dataLanguage: Language = XfTemplateFiles.dataLanguage(file) ?: HTMLLanguage.INSTANCE
 
-    override fun getLanguages(): Set<Language> = setOf(XfLanguage, HTMLLanguage.INSTANCE)
+    override fun getTemplateDataLanguage(): Language = dataLanguage
+
+    override fun getLanguages(): Set<Language> = setOf(XfLanguage, dataLanguage)
 
     override fun supportsIncrementalReparse(rootLanguage: Language): Boolean = false
 
@@ -39,7 +41,7 @@ class XfFileViewProvider(manager: PsiManager, file: VirtualFile, eventSystemEnab
         val definition = LanguageParserDefinitions.INSTANCE.forLanguage(lang) ?: return null
         return when {
             lang === XfLanguage -> definition.createFile(this)
-            lang === HTMLLanguage.INSTANCE -> definition.createFile(this).also {
+            lang === dataLanguage -> definition.createFile(this).also {
                 (it as? PsiFileImpl)?.setContentElementType(XfTemplateDataElementType)
             }
             else -> null

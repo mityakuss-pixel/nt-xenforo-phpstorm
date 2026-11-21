@@ -1,7 +1,9 @@
 package nt.xenforo.index
 
 import com.intellij.icons.AllIcons
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
+import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
@@ -15,10 +17,31 @@ import nt.xenforo.psi.XfTagElement
 import javax.swing.Icon
 
 private const val MACRO_KEY_PREFIX = "m:"
+private const val ADD_ONS_FOLDER = "addons"
+private const val ADD_ON_FILE = "addon.json"
 
 data class XfSymbolLocation(val file: VirtualFile, val symbol: XfSymbol) {
     val isOutput: Boolean
         get() = generateSequence(file.parent) { it.parent }.any { it.name == "_output" }
+
+    val relativePath: String
+        get() {
+            val names = ArrayList<String>()
+            var current: VirtualFile? = file
+            while (current != null && current.name != ADD_ONS_FOLDER) {
+                names += current.name
+                current = current.parent
+            }
+            return if (current == null) file.name else names.asReversed().joinToString("/")
+        }
+
+    val addOnId: String?
+        get() {
+            val root = generateSequence(file.parent) { it.parent }.takeWhile { it.name != ADD_ONS_FOLDER }
+                .firstOrNull { it.findChild(ADD_ON_FILE) != null } ?: return null
+            val names = generateSequence(root) { it.parent }.takeWhile { it.name != ADD_ONS_FOLDER }.map { it.name }.toList()
+            return names.asReversed().joinToString("/")
+        }
 }
 
 object XfSymbols {
@@ -46,6 +69,14 @@ object XfSymbols {
     }
 
     fun detail(project: Project, key: String): String? = locations(project, key).firstOrNull()?.symbol?.detail
+
+    fun phraseText(project: Project, title: String): String? {
+        val location = locations(project, XfSymbolKeys.phrase(title)).firstOrNull() ?: return null
+        val file = location.file
+        if (!file.isValid) return null
+        val text = FileDocumentManager.getInstance().getCachedDocument(file)?.charsSequence ?: LoadTextUtil.loadText(file)
+        return XfSymbolScanner.phraseText(text, location.symbol.offset, file.extension.equals("xml", ignoreCase = true))
+    }
 
     fun targets(project: Project, key: String, name: String): List<PsiElement> {
         val inFile = key.startsWith(MACRO_KEY_PREFIX)

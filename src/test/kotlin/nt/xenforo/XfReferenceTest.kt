@@ -22,6 +22,32 @@ class XfReferenceTest : XfTestCase() {
         assertEquals("macro", (target as XfTagElement).tagName)
     }
 
+    fun testMacroWithTypePrefix() {
+        addOutputFile("templates/public/demo_widget.html", "<xf:macro id=\"card\">x</xf:macro>")
+        configureTemplate("<xf:macro id=\"public:demo_widget::ca<caret>rd\" />", type = "admin")
+        assertInstanceOf(resolve(), XfTagElement::class.java)
+    }
+
+    fun testMacroWithTemplateAndNameAttributes() {
+        addOutputFile("templates/public/demo_widget.html", "<xf:macro id=\"card\">x</xf:macro>")
+        configureTemplate("<xf:macro template=\"demo_widget\" name=\"ca<caret>rd\" />")
+        assertInstanceOf(resolve(), XfTagElement::class.java)
+    }
+
+    fun testCallMacroFunction() {
+        addOutputFile("templates/public/demo_widget.html", "<xf:macro id=\"card\">x</xf:macro>")
+        configureTemplate("{{ call_macro('demo_widget', 'ca<caret>rd') }}")
+        assertInstanceOf(resolve(), XfTagElement::class.java)
+    }
+
+    fun testMacroFromDataTemplates() {
+        addDataFile("templates.xml", "<templates>\n  <template type=\"public\" title=\"demo_core_macros\" version_id=\"1\"><![CDATA[<xf:macro id=\"button\">b</xf:macro>]]></template>\n</templates>")
+        configureTemplate("<xf:macro id=\"demo_core_macros::but<caret>ton\" />")
+        val target = resolve()
+        assertInstanceOf(target, XfSymbolTarget::class.java)
+        assertEquals("button", (target as XfSymbolTarget).name)
+    }
+
     fun testLocalMacro() {
         configureTemplate("<xf:macro id=\"row\">x</xf:macro>\n<xf:macro id=\"r<caret>ow\" />", name = "demo_page.html")
         assertInstanceOf(resolve(), XfTagElement::class.java)
@@ -33,6 +59,17 @@ class XfReferenceTest : XfTestCase() {
         val target = resolve()
         assertInstanceOf(target, XfSymbolTarget::class.java)
         assertEquals("demo_goodbye", (target as XfSymbolTarget).name)
+    }
+
+    fun testPhraseModifiersAreIgnored() {
+        addOutputFile("phrases/demo_user_name.txt", "User name")
+        for (name in listOf("demo_user_name:", "(demo_user_name)", "demo_user_name...", "demo_user_name,", "(demo_user_name...):")) {
+            val caret = name.indexOf("user")
+            configureTemplate("{{ phrase('" + name.substring(0, caret) + "<caret>" + name.substring(caret) + "') }}", name = "demo_${name.hashCode().toUInt()}.html")
+            val reference = myFixture.getReferenceAtCaretPositionWithAssertion() as XfNameReference
+            assertEquals(name, "demo_user_name", reference.canonicalText)
+            assertEquals(name, "demo_user_name.txt", (reference.multiResolve(false).firstOrNull()?.element as? PsiFile)?.name)
+        }
     }
 
     fun testOutputWinsOverData() {

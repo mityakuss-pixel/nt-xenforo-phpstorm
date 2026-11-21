@@ -20,6 +20,7 @@ dependencies {
 
     intellijPlatform {
         phpstorm(providers.gradleProperty("platformVersion"))
+        bundledPlugins("com.jetbrains.php", "com.intellij.css", "org.jetbrains.plugins.less")
         testFramework(TestFrameworkType.Platform)
     }
 }

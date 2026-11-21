@@ -1,0 +1,6 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <lang.substitutor language="LESS" implementationClass="nt.xenforo.lang.XfLanguageSubstitutor"/>
+        <lang.inspectionSuppressor language="LESS" implementationClass="nt.xenforo.less.XfLessInspectionSuppressor"/>
+    </extensions>
+</idea-plugin>

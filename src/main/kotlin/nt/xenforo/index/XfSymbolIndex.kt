@@ -17,7 +17,7 @@ import java.io.DataOutput
 
 data class XfSymbol(val offset: Int, val detail: String)
 
-private object XfSymbolExternalizer : DataExternalizer<XfSymbol> {
+internal object XfSymbolExternalizer : DataExternalizer<XfSymbol> {
     override fun save(out: DataOutput, value: XfSymbol) {
         out.writeInt(value.offset)
         IOUtil.writeUTF(out, value.detail)
@@ -36,7 +36,7 @@ class XfSymbolIndex : FileBasedIndexExtension<String, XfSymbol>() {
 
     override fun getValueExternalizer(): DataExternalizer<XfSymbol> = XfSymbolExternalizer
 
-    override fun getVersion(): Int = 1
+    override fun getVersion(): Int = 3
 
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { XfSymbolScanner.isIndexed(it) }
 
@@ -60,6 +60,10 @@ object XfSymbolKeys {
     fun routePrefix(type: String): String = "r:$type:"
     fun property(name: String): String = "s:$name"
     const val PROPERTY_PREFIX: String = "s:"
+    fun option(id: String): String = "o:$id"
+    const val OPTION_PREFIX: String = "o:"
+    fun addOn(id: String): String = "a:$id"
+    const val ADD_ON_PREFIX: String = "a:"
 }
 
 internal fun VirtualFile.hasAncestorChain(vararg names: String): Boolean {
