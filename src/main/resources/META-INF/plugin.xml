@@ -3,31 +3,41 @@
     <name>XenForo Templates</name>
     <vendor url="https://github.com/mityakuss-pixel/nt-xenforo-phpstorm">nt</vendor>
     <description><![CDATA[
-<p>Support for <a href="https://xenforo.com">XenForo 2</a> templates for add-on and style developers.</p>
+<p>Development tools for <a href="https://xenforo.com">XenForo 2</a> add-ons and styles: the template language,
+code insight for add-on PHP code and the add-on commands of <code>cmd.php</code>.</p>
 <p>Templates in the development output of add-ons (<code>_output/templates/public</code>, <code>admin</code> and <code>email</code>)
 open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p>
+<h3>Templates</h3>
 <ul>
   <li>Highlighting of <code>&lt;xf:…&gt;</code> tags, <code>{{ … }}</code> expressions and <code>{$…}</code> variables,
-      with HTML, CSS, LESS and JavaScript inside working as usual, and <code>&lt;xf:js&gt;</code> and <code>&lt;xf:css&gt;</code> bodies treated as script and style</li>
-  <li>No false errors on template constructs: <code>{{ link(…) }}</code> in attributes, tags inside markup,
-      <code>&lt;xf:else /&gt;</code> branches that open different HTML, template tags inside styles</li>
-  <li>LESS templates see what <code>XF\CssRenderer</code> adds: <code>setup.less</code>, <code>&lt;prefix&gt;_prepend.less</code>,
-      included templates, <code>@xf-…</code> style properties</li>
-  <li>Formatting with tabs, where <code>&lt;xf:else /&gt;</code> and <code>&lt;xf:elseif /&gt;</code> line up with their <code>&lt;xf:if&gt;</code></li>
-  <li>Completion of tags, attributes, functions with parameters, filters, variables and <code>$xf</code> members:
-      entity columns, relations and methods, board options and sub-options</li>
-  <li>Template functions, filters and tests registered by add-ons in PHP</li>
-  <li>Completion and Ctrl+Click for templates, macros, phrases, routes, options and style properties from <code>_output</code> and <code>_data</code>,
-      and for PHP fields, methods and template function implementations</li>
-  <li>Ctrl+Click from <code>&lt;xf:js src&gt;</code> to JavaScript files and from <code>data-xf-init</code> and <code>data-xf-click</code> to handlers
-      registered with <code>XF.Element.register</code> and <code>XF.Event.register</code></li>
-  <li>Quick documentation, parameter info and phrase text hints after <code>phrase()</code></li>
-  <li>Structure view with <code>&lt;xf:…&gt;</code> tags and macros</li>
-  <li>Errors the template compiler would report: unclosed and mismatched tags, misplaced <code>&lt;xf:else /&gt;</code>,
-      unknown tags, unfinished expressions</li>
-  <li>Auto-closing of <code>{{ }}</code> and block tags, folding and <code>&lt;xf:comment&gt;</code> commenting</li>
-  <li>Add-on commands in the context menu: build a release, bump the version, export and import development output,
-      export <code>_data</code>, sync <code>addon.json</code> or run any <code>cmd.php</code> command with the PHP interpreter chosen for the project</li>
+      with HTML, CSS, LESS and JavaScript inside working as usual</li>
+  <li>No false errors on template constructs, and the errors the template compiler would report</li>
+  <li>Completion of tags, attributes, macro arguments, functions, filters, variables and <code>$xf</code> members</li>
+  <li>Ctrl+Click to templates, macros, phrases, routes, options, style properties, JavaScript files and handlers,
+      PHP classes behind tags and functions, and variables declared with <code>&lt;xf:set&gt;</code></li>
+  <li>Variables typed from the controller <code>view()</code> that renders the template</li>
+  <li>Formatting with tabs, where <code>&lt;xf:else /&gt;</code> lines up with its <code>&lt;xf:if&gt;</code></li>
+  <li>LESS templates see what <code>XF\CssRenderer</code> adds: <code>setup.less</code>, included templates and style properties</li>
+</ul>
+<h3>Add-on PHP code</h3>
+<ul>
+  <li><code>XFCP_</code> classes resolve to the classes they extend; Alt+Enter creates a class extension</li>
+  <li>Short class names such as <code>'XF:User'</code> in finders, repositories, services, plugins and jobs</li>
+  <li>Entity columns, relations and getters in <code>where()</code>, <code>order()</code>, <code>with()</code> and <code>get()</code>,
+      including columns added by extensions</li>
+  <li>Phrases, templates, macros, routes and permissions in PHP strings</li>
+  <li>Links from <code>_output</code> JSON to classes and methods, and checks for <code>addon.json</code> and <code>build.json</code></li>
+</ul>
+<h3>Phrases and template modifications</h3>
+<ul>
+  <li>Unknown phrases are reported, created with Alt+Enter, and template text can be extracted to a phrase</li>
+  <li>Template modifications are created from a selection, shown in the gutter of templates and <code>templates.xml</code>,
+      and reported when their <code>find</code> no longer matches</li>
+</ul>
+<h3>Add-on commands</h3>
+<ul>
+  <li>Build a release, bump the version, import and export development output, lint templates, run <code>xf-make</code>
+      and setup steps, or any <code>cmd.php</code> command with the PHP interpreter chosen for the project</li>
 </ul>
     ]]></description>
 
@@ -39,6 +49,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
     <depends>com.jetbrains.php</depends>
     <depends optional="true" config-file="nt-xenforo-css.xml">com.intellij.css</depends>
     <depends optional="true" config-file="nt-xenforo-less.xml">org.jetbrains.plugins.less</depends>
+    <depends optional="true" config-file="nt-xenforo-json.xml">com.intellij.modules.json</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <fileType name="XenForo Template" language="XenForoTemplate" fieldName="INSTANCE"
@@ -55,21 +66,37 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <localInspection language="XenForoTemplate" shortName="XfUnknownTag" enabledByDefault="true" level="WARNING"
                          key="inspection.unknown.tag.display.name" groupKey="inspection.group.name"
                          implementationClass="nt.xenforo.inspection.XfUnknownTagInspection"/>
+        <localInspection language="XenForoTemplate" shortName="XfUnknownPhrase" enabledByDefault="true" level="WARNING"
+                         key="inspection.unknown.phrase.display.name" groupKey="inspection.group.name"
+                         implementationClass="nt.xenforo.phrase.XfUnknownPhraseInspection"/>
+        <localInspection language="PHP" shortName="XfUnknownPhrasePhp" enabledByDefault="true" level="WARNING"
+                         key="inspection.unknown.phrase.php.display.name" groupKey="inspection.group.name"
+                         implementationClass="nt.xenforo.phrase.XfUnknownPhrasePhpInspection"/>
 
         <fileBasedIndex implementation="nt.xenforo.index.XfSymbolIndex"/>
         <fileBasedIndex implementation="nt.xenforo.index.XfTemplaterIndex"/>
         <psi.referenceContributor language="XenForoTemplate" implementation="nt.xenforo.reference.XfReferenceContributor"/>
         <psi.referenceContributor language="XML" implementation="nt.xenforo.reference.XfHtmlHandlerReferenceContributor"/>
+        <psi.referenceContributor language="PHP" implementation="nt.xenforo.php.XfPhpReferenceContributor"/>
+        <completion.contributor language="PHP" implementationClass="nt.xenforo.php.XfPhpCompletionContributor"/>
+        <completion.contributor language="PHP" implementationClass="nt.xenforo.php.XfEntityStringCompletionContributor"/>
+        <psi.referenceContributor language="PHP" implementation="nt.xenforo.php.XfEntityStringReferenceContributor"/>
+        <psi.referenceContributor language="PHP" implementation="nt.xenforo.php.XfShortNameReferenceContributor"/>
+        <completion.contributor language="PHP" implementationClass="nt.xenforo.php.XfShortNameCompletionContributor"/>
         <gotoDeclarationHandler implementation="nt.xenforo.reference.XfTagGotoDeclarationHandler"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAttributeValue" implementationClass="nt.xenforo.reference.XfAttributeValueManipulator"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfStringExpr" implementationClass="nt.xenforo.reference.XfStringExprManipulator"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAccessExpression" implementationClass="nt.xenforo.reference.XfAccessExpressionManipulator"/>
-        <platform.backend.documentation.targetProvider implementation="nt.xenforo.documentation.XfDocumentationTargetProvider"/>
+        <platform.backend.documentation.targetProvider order="first" implementation="nt.xenforo.documentation.XfDocumentationTargetProvider"/>
         <codeInsight.parameterInfo language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfParameterInfoHandler"/>
         <codeInsight.declarativeInlayProvider language="XenForoTemplate" providerId="nt.xenforo.phrase.text" isEnabledByDefault="true"
                                               group="VALUES_GROUP" bundle="messages.XfBundle" nameKey="inlay.phrase.name"
                                               descriptionKey="inlay.phrase.description"
                                               implementationClass="nt.xenforo.editor.XfPhraseInlayHintsProvider"/>
+        <codeInsight.declarativeInlayProvider language="PHP" providerId="nt.xenforo.phrase.text.php" isEnabledByDefault="true"
+                                              group="VALUES_GROUP" bundle="messages.XfBundle" nameKey="inlay.phrase.name"
+                                              descriptionKey="inlay.phrase.description"
+                                              implementationClass="nt.xenforo.php.XfPhpPhraseInlayHintsProvider"/>
         <completion.contributor language="XenForoTemplate" implementationClass="nt.xenforo.completion.XfCompletionContributor"/>
         <completion.confidence language="XenForoTemplate" order="first" implementationClass="nt.xenforo.completion.XfCompletionConfidence"/>
         <xml.tagNameProvider implementation="nt.xenforo.editor.XfHtmlTagNameProvider"/>
@@ -88,18 +115,57 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <fileIndentOptionsProvider implementation="nt.xenforo.format.XfFileIndentOptionsProvider"/>
         <projectConfigurable parentId="reference.webide.settings.project.settings.php" instance="nt.xenforo.commands.XfCommandConfigurable"
                              id="nt.xenforo.commands" bundle="messages.XfBundle" key="settings.commands.title" nonDefaultProject="true"/>
+        <codeInsight.lineMarkerProvider language="XenForoTemplate" implementationClass="nt.xenforo.modification.XfModificationLineMarkerProvider"/>
+        <codeInsight.lineMarkerProvider language="XenForoTemplate" implementationClass="nt.xenforo.php.XfTemplateControllerMarkerProvider"/>
+        <gotoRelatedProvider implementation="nt.xenforo.php.XfTemplateControllerGotoProvider"/>
+        <runLineMarkerContributor language="PHP" implementationClass="nt.xenforo.commands.XfSetupStepLineMarker"/>
+        <additionalLibraryRootsProvider implementation="nt.xenforo.php.XfProxyLibraryProvider"/>
+        <postStartupActivity implementation="nt.xenforo.php.XfProxyLibraryStartup"/>
+        <intentionAction>
+            <language>PHP</language>
+            <className>nt.xenforo.php.XfExtendClassIntention</className>
+            <bundleName>messages.XfBundle</bundleName>
+            <categoryKey>intention.category</categoryKey>
+        </intentionAction>
+        <intentionAction>
+            <language>PHP</language>
+            <className>nt.xenforo.php.XfReplyCheckIntention</className>
+            <bundleName>messages.XfBundle</bundleName>
+            <categoryKey>intention.category</categoryKey>
+        </intentionAction>
+        <intentionAction>
+            <className>nt.xenforo.phrase.XfExtractPhraseIntention</className>
+            <bundleName>messages.XfBundle</bundleName>
+            <categoryKey>intention.category</categoryKey>
+        </intentionAction>
         <notificationGroup id="nt.xenforo.commands" displayType="BALLOON" bundle="messages.XfBundle" key="notification.group.commands"/>
     </extensions>
+
+    <projectListeners>
+        <listener class="nt.xenforo.modification.XfTemplatesXmlMarkers" topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+    </projectListeners>
 
     <actions>
         <group id="nt.xenforo.AddOn" class="nt.xenforo.commands.XfAddOnActionGroup" popup="true">
             <action id="nt.xenforo.BuildRelease" class="nt.xenforo.commands.XfBuildReleaseAction"/>
             <action id="nt.xenforo.BumpVersion" class="nt.xenforo.commands.XfBumpVersionAction"/>
             <separator/>
+            <action id="nt.xenforo.ExtendClass" class="nt.xenforo.php.XfExtendClassAction"/>
+            <action id="nt.xenforo.Make" class="nt.xenforo.commands.XfMakeAction">
+                <add-to-group group-id="NewGroup" anchor="last"/>
+            </action>
+            <separator/>
             <action id="nt.xenforo.ExportOutput" class="nt.xenforo.commands.XfExportOutputAction"/>
             <action id="nt.xenforo.ImportOutput" class="nt.xenforo.commands.XfImportOutputAction"/>
             <action id="nt.xenforo.ExportData" class="nt.xenforo.commands.XfExportDataAction"/>
             <action id="nt.xenforo.SyncJson" class="nt.xenforo.commands.XfSyncJsonAction"/>
+            <separator/>
+            <action id="nt.xenforo.LintTemplates" class="nt.xenforo.commands.XfLintTemplatesAction"/>
+            <action id="nt.xenforo.UnusedPhrases" class="nt.xenforo.commands.XfUnusedPhrasesAction"/>
+            <action id="nt.xenforo.EntityProperties" class="nt.xenforo.commands.XfEntityPropertiesAction"/>
+            <action id="nt.xenforo.ClassLint" class="nt.xenforo.commands.XfClassLintAction"/>
+            <action id="nt.xenforo.PhpStormMeta" class="nt.xenforo.commands.XfPhpStormMetaAction"/>
+            <action id="nt.xenforo.OptionsStub" class="nt.xenforo.commands.XfOptionsStubAction"/>
             <separator/>
             <action id="nt.xenforo.RunCommand" class="nt.xenforo.commands.XfRunCommandAction"/>
             <action id="nt.xenforo.CommandSettings" class="nt.xenforo.commands.XfCommandSettingsAction"/>
@@ -107,5 +173,8 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
             <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </group>
+        <action id="nt.xenforo.CreateModification" class="nt.xenforo.modification.XfCreateModificationAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
     </actions>
 </idea-plugin>

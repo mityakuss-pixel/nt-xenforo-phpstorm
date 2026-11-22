@@ -17,7 +17,7 @@ private const val ATTRIBUTE_PREFIX = "data-xf-"
 private const val XF_MARKER = "XF."
 
 private val NOT_EVENTS = setOf("init", "key")
-private val EVENT_NAME = Regex("""[a-z]+""")
+private val EVENT_NAME = Regex("""[a-z0-9_-]+""")
 private val ELEMENT_REGISTER = Regex("""XF\.Element\.register\(\s*['"]([\w-]+)['"]\s*,\s*['"]([\w$.]+)['"]""")
 private val EVENT_REGISTER = Regex("""XF\.Event\.register\(\s*['"]([\w-]+)['"]\s*,\s*['"]([\w-]+)['"]\s*,\s*['"]([\w$.]+)['"]""")
 private val CLASS_DEFINITION = Regex(
@@ -38,7 +38,7 @@ object XfJsHandlers {
             result.putIfAbsent(ELEMENT_PREFIX + match.groupValues[1], XfSymbol(match.range.first, match.groupValues[2]))
         }
         for (match in EVENT_REGISTER.findAll(text)) {
-            result.putIfAbsent(eventPrefix(match.groupValues[1]) + match.groupValues[2], XfSymbol(match.range.first, match.groupValues[3]))
+            result.putIfAbsent(eventPrefix(match.groupValues[1].lowercase()) + match.groupValues[2], XfSymbol(match.range.first, match.groupValues[3]))
         }
         for (match in CLASS_DEFINITION.findAll(text)) {
             val group = match.groups[1] ?: continue

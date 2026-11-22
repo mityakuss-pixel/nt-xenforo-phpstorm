@@ -7,16 +7,17 @@ object XfVersion {
     private const val PART_LIMIT = 99
 
     private val VERSION = Regex(
-        """^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:\s+(alpha|beta|rc|release candidate|patch level|pl)(?:\s*(\d+))?)?$""",
+        """^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:\s*(alpha|beta|release\s+candidate|rc|patch\s+level|patch|pl)(?:\s*(\d+))?)?$""",
         RegexOption.IGNORE_CASE,
     )
     private val PLAIN = Regex("""^(\d+)\.(\d+)\.(\d+)$""")
+    private val WHITESPACE = Regex("""\s+""")
 
     fun id(versionString: String): Int? {
         val match = VERSION.matchEntire(versionString.trim()) ?: return null
         val (major, minor, patch, fourth, stageName, stageBuild) = match.destructured
         if (minor.toInt() > PART_LIMIT || patch.toInt() > PART_LIMIT) return null
-        var status = when (stageName.lowercase()) {
+        var status = when (stageName.lowercase().replace(WHITESPACE, " ")) {
             "" -> STABLE
             "alpha" -> 1
             "beta" -> 3

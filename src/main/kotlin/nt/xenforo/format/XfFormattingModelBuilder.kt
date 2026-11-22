@@ -17,6 +17,7 @@ import com.intellij.openapi.util.TextRange
 import com.intellij.psi.codeStyle.CodeStyleSettings
 import com.intellij.psi.formatter.DocumentBasedFormattingModel
 import com.intellij.psi.formatter.FormattingDocumentModelImpl
+import com.intellij.psi.formatter.xml.HtmlCodeStyleSettings
 import com.intellij.psi.formatter.xml.HtmlPolicy
 import com.intellij.psi.formatter.xml.SyntheticBlock
 import com.intellij.psi.templateLanguages.SimpleTemplateLanguageFormattingModelBuilder
@@ -60,12 +61,19 @@ private class XfBlock(
     wrap: Wrap?,
     alignment: Alignment?,
     factory: TemplateLanguageBlockFactory,
-    settings: CodeStyleSettings,
+    private val codeStyleSettings: CodeStyleSettings,
     foreignChildren: List<DataLanguageBlockWrapper>?,
     private val htmlPolicy: HtmlPolicy,
-) : TemplateLanguageBlock(node, wrap, alignment, factory, settings, foreignChildren) {
+) : TemplateLanguageBlock(node, wrap, alignment, factory, codeStyleSettings, foreignChildren) {
+
+    private val attributeAlignment: Alignment? by lazy(LazyThreadSafetyMode.NONE) {
+        if (codeStyleSettings.getCustomSettings(HtmlCodeStyleSettings::class.java).HTML_ALIGN_ATTRIBUTES) Alignment.createAlignment() else null
+    }
 
     override fun isLeaf(): Boolean = myNode.elementType in LEAF_BLOCKS || super.isLeaf()
+
+    override fun createChildAlignment(child: ASTNode): Alignment? =
+        if (myNode.elementType in TAG_HEADERS && child.elementType == XfTypes.ATTRIBUTE) attributeAlignment else super.createChildAlignment(child)
 
     override fun buildChildren(): MutableList<Block> =
         if (myNode.elementType in LEAF_BLOCKS) mutableListOf() else super.buildChildren()
@@ -108,7 +116,8 @@ private class XfBlock(
 
     override fun getChildAttributes(newChildIndex: Int): ChildAttributes {
         val type = myNode.elementType
-        val indented = type in TAG_HEADERS || type == XfTypes.TAG ||
+        if (type in TAG_HEADERS) return ChildAttributes(Indent.getNormalIndent(), attributeAlignment)
+        val indented = type == XfTypes.TAG ||
             (parent is DataLanguageBlockWrapper && (type != XfTypes.BODY || newChildIndex != 0))
         return ChildAttributes(if (indented) Indent.getNormalIndent() else Indent.getNoneIndent(), null)
     }

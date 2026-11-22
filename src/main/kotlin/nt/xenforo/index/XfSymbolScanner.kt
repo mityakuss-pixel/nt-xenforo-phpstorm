@@ -7,12 +7,18 @@ import nt.xenforo.lang.XfTemplateFiles
 private const val DETAIL_LIMIT = 160
 private const val METADATA_FILE = "_metadata.json"
 private const val CDATA_START = "<![CDATA["
+private const val NAMESPACE_SEPARATOR = '\\'
+private const val MODIFICATIONS_FOLDER = "template_modifications"
 
 private const val ADD_ON_FILE = "addon.json"
 private const val ADD_ONS_FOLDER = "addons"
 
-private val DATA_FILES = setOf("templates.xml", "phrases.xml", "routes.xml", "style_properties.xml", "options.xml")
-private val OUTPUT_FOLDERS = setOf("phrases", "routes", "style_properties", "options")
+private val DATA_FILES = setOf("templates.xml", "phrases.xml", "routes.xml", "style_properties.xml", "options.xml", "class_extensions.xml", "template_modifications.xml",
+    "widget_positions.xml", "permissions.xml", "admin_permission.xml")
+private val OUTPUT_FOLDERS = setOf("phrases", "routes", "style_properties", "options", "class_extensions", "widget_positions", "permissions", "admin_permissions")
+private val XML_WIDGET_POSITION = Regex("""<widget_position\s([^>]*?)/?>""")
+private val XML_PERMISSION = Regex("""<permission\s([^>]*?)/?>""")
+private val XML_ADMIN_PERMISSION = Regex("""<admin_permission\s([^>]*?)/?>""")
 
 private val XML_ATTRIBUTE = Regex("""([\w:-]+)\s*=\s*"([^"]*)"""")
 private val MACRO_TAG = Regex("""<xf:macro\b((?:\s+[\w:-]+\s*=\s*"[^"]*")*)\s*(/?)>""")
@@ -21,6 +27,8 @@ private val XML_PHRASE = Regex("""<phrase\s([^>]*?)(/>|>)""")
 private val XML_ROUTE = Regex("""<route\s([^>]*?)/?>""")
 private val XML_STYLE_PROPERTY = Regex("""<style_property\s([^>]*?)/?>""")
 private val XML_OPTION = Regex("""<option\s([^>]*?)(/?)>""")
+private val XML_EXTENSION = Regex("""<extension\s([^>]*?)/?>""")
+private val XML_MODIFICATION = Regex("""<modification\s([^>]*?)/?>""")
 private val XML_SUB_OPTIONS = Regex("""<sub_options>(.*?)</sub_options>""", RegexOption.DOT_MATCHES_ALL)
 private val JSON_FIELD = Regex(""""(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"""")
 private val JSON_SUB_OPTIONS = Regex(""""sub_options"\s*:\s*\[(.*?)]""", RegexOption.DOT_MATCHES_ALL)
@@ -60,8 +68,10 @@ object XfSymbolScanner {
         if (name == METADATA_FILE) return false
         if (name == ADD_ON_FILE) return addOnId(file) != null
         if (XfJsHandlers.isIndexed(file)) return true
+        if (XfExtensionClasses.isIndexed(file)) return true
         val parent = file.parent ?: return false
         if (parent.name == "_data") return name in DATA_FILES
+        if (isModificationJson(file)) return true
         if (XfTemplateFiles.templateType(file) != null) return file.hasAncestorChain(parent.name, "templates", "_output")
         return parent.name in OUTPUT_FOLDERS && parent.parent?.name == "_output"
     }
@@ -71,6 +81,15 @@ object XfSymbolScanner {
         val parent = file.parent ?: return result
         when {
             XfJsHandlers.isIndexed(file) -> XfJsHandlers.scan(text, result)
+            XfExtensionClasses.isIndexed(file) -> {
+                XfExtensionClasses.scan(text, result)
+                XfExtensionClasses.scanViews(file, text, result)
+            }
+            isModificationJson(file) -> {
+                val fields = jsonFields(text)
+                val template = fields["template"] ?: return result
+                result[XfSymbolKeys.modification(parent.name, template, file.nameWithoutExtension)] = XfSymbol(0, fields["action"].orEmpty())
+            }
             file.name == ADD_ON_FILE -> addOnId(file)?.let { result[XfSymbolKeys.addOn(it)] = XfSymbol(0, detail(jsonFields(text)["title"].orEmpty())) }
             parent.name == "_data" -> when (file.name) {
                 "templates.xml" -> scanTemplatesXml(text, result)
@@ -78,6 +97,13 @@ object XfSymbolScanner {
                 "routes.xml" -> scanRoutesXml(text, result)
                 "style_properties.xml" -> scanStylePropertiesXml(text, result)
                 "options.xml" -> scanOptionsXml(text, result)
+                "class_extensions.xml" -> scanClassExtensionsXml(text, result)
+                "template_modifications.xml" -> scanModificationsXml(text, result)
+                "widget_positions.xml" -> scanXmlIds(text, XML_WIDGET_POSITION, result) { XfSymbolKeys.widgetPosition(it["position_id"] ?: return@scanXmlIds null) }
+                "permissions.xml" -> scanXmlIds(text, XML_PERMISSION, result) {
+                    XfSymbolKeys.permission(it["permission_group_id"] ?: return@scanXmlIds null, it["permission_id"] ?: return@scanXmlIds null)
+                }
+                "admin_permission.xml" -> scanXmlIds(text, XML_ADMIN_PERMISSION, result) { XfSymbolKeys.adminPermission(it["admin_permission_id"] ?: return@scanXmlIds null) }
             }
             XfTemplateFiles.templateType(file) != null -> {
                 val type = parent.name
@@ -92,6 +118,14 @@ object XfSymbolScanner {
                 val fields = jsonFields(text)
                 val subOptions = JSON_SUB_OPTIONS.find(text)?.groupValues?.get(1)?.let { list -> JSON_STRING.findAll(list).map { it.groupValues[1] }.toList() }.orEmpty()
                 result[XfSymbolKeys.option(file.nameWithoutExtension)] = XfSymbol(0, XfOptionDetail.encode(fields["data_type"].orEmpty(), fields["edit_format"].orEmpty(), subOptions))
+            }
+            parent.name == "class_extensions" -> addExtension(jsonFields(text), 0, result)
+            parent.name == "widget_positions" -> result[XfSymbolKeys.widgetPosition(file.nameWithoutExtension)] = XfSymbol(0, "")
+            parent.name == "admin_permissions" -> result[XfSymbolKeys.adminPermission(file.nameWithoutExtension)] = XfSymbol(0, "")
+            parent.name == "permissions" -> {
+                val name = file.nameWithoutExtension
+                val separator = name.indexOf('-')
+                if (separator > 0) result[XfSymbolKeys.permission(name.substring(0, separator), name.substring(separator + 1))] = XfSymbol(0, "")
             }
             parent.name == "style_properties" -> {
                 val fields = jsonFields(text)
@@ -199,6 +233,40 @@ object XfSymbolScanner {
             }
             result[XfSymbolKeys.option(id)] = XfSymbol(match.range.first, XfOptionDetail.encode(attributes["data_type"].orEmpty(), attributes["edit_format"].orEmpty(), subOptions))
         }
+    }
+
+    private fun scanXmlIds(text: CharSequence, tag: Regex, result: MutableMap<String, XfSymbol>, key: (Map<String, String>) -> String?) {
+        for (match in tag.findAll(text)) {
+            key(xmlAttributes(match.groupValues[1]))?.let { result.putIfAbsent(it, XfSymbol(match.range.first, "")) }
+        }
+    }
+
+    private fun scanModificationsXml(text: CharSequence, result: MutableMap<String, XfSymbol>) {
+        for (match in XML_MODIFICATION.findAll(text)) {
+            val attributes = xmlAttributes(match.groupValues[1])
+            val type = attributes["type"] ?: continue
+            val template = attributes["template"] ?: continue
+            val key = attributes["modification_key"] ?: continue
+            result.putIfAbsent(XfSymbolKeys.modification(type, template, key), XfSymbol(match.range.first, attributes["action"].orEmpty()))
+        }
+    }
+
+    fun isModificationJson(file: VirtualFile): Boolean {
+        if (!file.extension.equals("json", ignoreCase = true) || file.name == METADATA_FILE) return false
+        val type = file.parent ?: return false
+        return type.parent?.name == MODIFICATIONS_FOLDER && type.parent?.parent?.name == "_output"
+    }
+
+    private fun scanClassExtensionsXml(text: CharSequence, result: MutableMap<String, XfSymbol>) {
+        for (match in XML_EXTENSION.findAll(text)) {
+            addExtension(xmlAttributes(match.groupValues[1]), match.range.first, result)
+        }
+    }
+
+    private fun addExtension(fields: Map<String, String>, offset: Int, result: MutableMap<String, XfSymbol>) {
+        val from = fields["from_class"]?.trimStart(NAMESPACE_SEPARATOR)?.takeIf { it.isNotEmpty() } ?: return
+        val to = fields["to_class"]?.trimStart(NAMESPACE_SEPARATOR)?.takeIf { it.isNotEmpty() } ?: return
+        result.putIfAbsent(XfSymbolKeys.extension(to), XfSymbol(offset, from))
     }
 
     fun phraseText(text: CharSequence, offset: Int, isXml: Boolean): String {

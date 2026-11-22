@@ -77,7 +77,7 @@ class XfInsightTest : XfTestCase() {
     fun testTagDocumentationListsAttributes() {
         configureTemplate("<xf:for<caret>each loop=\"\$items\" value=\"\$item\"></xf:foreach>")
         val html = documentation()
-        assertTrue(html, html.contains("loop, value"))
+        assertTrue(html, html.contains("<code>loop</code>, <code>value</code>"))
     }
 
     fun testFunctionDocumentationShowsSignature() {

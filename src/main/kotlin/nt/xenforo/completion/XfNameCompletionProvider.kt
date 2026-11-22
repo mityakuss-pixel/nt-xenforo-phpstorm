@@ -24,6 +24,7 @@ import nt.xenforo.reference.XfLocalMacros
 import nt.xenforo.reference.XfNameKind
 import nt.xenforo.reference.XfNameSlot
 import nt.xenforo.reference.XfNameSlots
+import nt.xenforo.reference.XfTemplateExtensions
 
 class XfNameCompletionProvider : CompletionProvider<CompletionParameters>() {
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
@@ -46,6 +47,9 @@ class XfNameCompletionProvider : CompletionProvider<CompletionParameters>() {
             XfNameKind.ROUTE -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Related)
             XfNameKind.PROPERTY -> addDetailed(project, XfSymbolKeys.PROPERTY_PREFIX, names, AllIcons.Nodes.Property)
             XfNameKind.HANDLER -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Class)
+            XfNameKind.WIDGET_POSITION -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Plugin)
+            XfNameKind.PERMISSION -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Padlock)
+            XfNameKind.EXTENSION -> for (name in XfTemplateExtensions.names(host)) names.addElement(LookupElementBuilder.create(name).withIcon(AllIcons.Nodes.Template))
         }
     }
 

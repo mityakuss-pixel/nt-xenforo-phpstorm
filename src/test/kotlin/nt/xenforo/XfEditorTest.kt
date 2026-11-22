@@ -30,6 +30,28 @@ class XfEditorTest : XfTestCase() {
         assertEquals("<xf:if is=\"\$a\">a<xf:else /></xf:if>", myFixture.editor.document.text)
     }
 
+    fun testTypedElseLinesUpWithIf() {
+        configureTemplate("<div>\n\t<xf:if is=\"\$a\">\n\t\t<b>a</b>\n\t\t<xf:else /<caret>\n\t</xf:if>\n</div>")
+        myFixture.type('>')
+        assertEquals("<div>\n\t<xf:if is=\"\$a\">\n\t\t<b>a</b>\n\t<xf:else />\n\t</xf:if>\n</div>", myFixture.editor.document.text)
+    }
+
+    fun testTypedElseIfLinesUpWithIf() {
+        configureTemplate("<xf:if is=\"\$a\">\n\t<b>a</b>\n\t<xf:elseif is=\"\$b\" /<caret>\n</xf:if>", "second.html")
+        myFixture.type('>')
+        assertEquals("<xf:if is=\"\$a\">\n\t<b>a</b>\n<xf:elseif is=\"\$b\" />\n</xf:if>", myFixture.editor.document.text)
+    }
+
+    fun testCompletedElseLinesUpWithIf() {
+        configureTemplate("<div>\n\t<xf:if is=\"\$a\">\n\t\t<b>a</b>\n\t\t<xf:els<caret>\n\t</xf:if>\n</div>", "third.html")
+        val items = myFixture.completeBasic()
+        if (items != null) {
+            myFixture.lookup.currentItem = items.first { it.lookupString == "else" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("<div>\n\t<xf:if is=\"\$a\">\n\t\t<b>a</b>\n\t<xf:else />\n\t</xf:if>\n</div>", myFixture.editor.document.text)
+    }
+
     fun testEnterBetweenTags() {
         configureTemplate("<xf:if is=\"\$a\"><caret></xf:if>")
         myFixture.performEditorAction(IdeActions.ACTION_EDITOR_ENTER)

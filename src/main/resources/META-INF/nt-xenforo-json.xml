@@ -1,0 +1,12 @@
+<idea-plugin>
+    <extensions defaultExtensionNs="com.intellij">
+        <psi.referenceContributor language="JSON" implementation="nt.xenforo.modification.XfModificationJsonReferenceContributor"/>
+        <localInspection language="JSON" shortName="XfTemplateModification" enabledByDefault="true" level="WARNING"
+                         bundle="messages.XfBundle" key="inspection.modification.display.name" groupKey="inspection.group.name"
+                         implementationClass="nt.xenforo.modification.XfModificationJsonInspection"/>
+        <psi.referenceContributor language="JSON" implementation="nt.xenforo.json.XfOutputJsonReferenceContributor"/>
+    </extensions>
+    <extensions defaultExtensionNs="JavaScript">
+        <JsonSchema.ProviderFactory implementation="nt.xenforo.json.XfJsonSchemaProviderFactory"/>
+    </extensions>
+</idea-plugin>

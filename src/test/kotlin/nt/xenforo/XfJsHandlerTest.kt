@@ -54,7 +54,28 @@ class XfJsHandlerTest : XfTestCase() {
         configureTemplate("<xf:button data-xf-click=\"<caret>\">x</xf:button>")
         val variants = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
         assertContainsElements(variants, "overlay")
-        assertDoesntContain(variants, "tooltip")
+        assertDoesntContain(variants, "tooltip", "preview", "drop-zone")
+    }
+
+    fun testAnyRegisteredEventInHtml() {
+        configureTemplate("<div data-xf-mouseover=\"pre<caret>view\"></div>")
+        val target = resolveAtCaret() as XfSymbolTarget
+        assertEquals("Demo.PreviewHover", target.name)
+        assertEquals(HANDLERS.indexOf("Demo.PreviewHover = "), target.textOffset)
+    }
+
+    fun testEventWithHyphenInXfTag() {
+        configureTemplate("<xf:button data-xf-drag-end=\"drop-<caret>zone\">x</xf:button>")
+        val reference = myFixture.getReferenceAtCaretPositionWithAssertion() as XfNameReference
+        val target = reference.multiResolve(false).single().element as XfSymbolTarget
+        assertEquals(HANDLERS.indexOf("XF.Event.register('drag-end'"), target.textOffset)
+    }
+
+    fun testCompletionForOtherEvent() {
+        configureTemplate("<div data-xf-mouseover=\"<caret>\"></div>")
+        val variants = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
+        assertContainsElements(variants, "preview")
+        assertDoesntContain(variants, "overlay", "tooltip", "drop-zone")
     }
 
     fun testDocumentationNamesClass() {
@@ -93,6 +114,11 @@ class XfJsHandlerTest : XfTestCase() {
             XF.Element.register('tooltip', 'XF.TooltipElement')
             XF.Event.register('click', 'overlay', 'XF.OverlayClick')
             XF.Element.register('lazy', 'XF.LazyElement')
+            Demo.PreviewHover = XF.Event.newHandler({
+            	eventNameSpace: 'DemoPreviewHover'
+            })
+            XF.Event.register('mouseOver', 'preview', 'Demo.PreviewHover')
+            XF.Event.register('drag-end', 'drop-zone', 'Demo.DropZone')
         """.trimIndent()
     }
 }

@@ -8,6 +8,7 @@ import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.index.XfSymbols
 import nt.xenforo.meta.XfGlobal
 import nt.xenforo.meta.XfGlobals
+import nt.xenforo.php.XfTemplateParams
 import nt.xenforo.psi.XfAccessExpression
 
 sealed interface XfValueType {
@@ -93,8 +94,11 @@ object XfMembers {
 object XfAccess {
     fun rootType(variableName: String): XfValueType? = if (variableName == XfGlobals.ROOT) XfValueType.Globals else null
 
+    fun rootType(expression: XfAccessExpression): XfValueType? =
+        rootType(expression.variableName) ?: XfTemplateParams.type(expression.containingFile, expression.variableName)
+
     fun ownerType(project: Project, expression: XfAccessExpression, index: Int): XfValueType? {
-        var type = rootType(expression.variableName) ?: return null
+        var type = rootType(expression) ?: return null
         val segments = expression.segments
         for (position in 0 until index) {
             val segment = segments.getOrNull(position) ?: return null

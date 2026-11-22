@@ -3,6 +3,7 @@ package nt.xenforo.commands
 import com.intellij.execution.ExecutionException
 import com.intellij.execution.RunContentExecutor
 import com.intellij.execution.configurations.GeneralCommandLine
+import com.intellij.execution.filters.Filter
 import com.intellij.execution.process.KillableColoredProcessHandler
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
@@ -35,8 +36,17 @@ object XfCommandRunner {
     private const val ANSI = "--ansi"
     private const val OPTIONS_END = "--"
     private const val ZIP_EXTENSION = "zip"
+    private const val INTERACTIVE_VARIABLE = "SHELL_INTERACTIVE"
 
-    fun run(project: Project, addOn: XfAddOn, title: String, arguments: List<String>, onSuccess: ((XfAddOn) -> Unit)? = null) {
+    fun run(
+        project: Project,
+        addOn: XfAddOn,
+        title: String,
+        arguments: List<String>,
+        filters: List<Filter> = emptyList(),
+        interactive: Boolean = false,
+        onSuccess: ((XfAddOn) -> Unit)? = null,
+    ) {
         FileDocumentManager.getInstance().saveAllDocuments()
         val script = addOn.script
         if (script == null) {
@@ -48,7 +58,7 @@ object XfCommandRunner {
             private var handler: ProcessHandler? = null
 
             override fun run(indicator: ProgressIndicator) {
-                handler = createHandler(project, addOn.root, script, arguments)
+                handler = createHandler(project, addOn.root, script, arguments, interactive)
             }
 
             override fun onSuccess() {
@@ -58,11 +68,12 @@ object XfCommandRunner {
                         ApplicationManager.getApplication().invokeLater({ finished(project, addOn, tabTitle, event.exitCode, onSuccess) }, project.disposed)
                     }
                 })
-                RunContentExecutor(project, processHandler)
+                val executor = RunContentExecutor(project, processHandler)
                     .withTitle(tabTitle)
-                    .withRerun { run(project, addOn, title, arguments, onSuccess) }
+                    .withRerun { run(project, addOn, title, arguments, filters, interactive, onSuccess) }
                     .withActivateToolWindow(true)
-                    .run()
+                filters.forEach { executor.withFilter(it) }
+                executor.run()
             }
 
             override fun onThrowable(error: Throwable) {
@@ -96,14 +107,15 @@ object XfCommandRunner {
         }
     }
 
-    private fun createHandler(project: Project, root: VirtualFile, script: VirtualFile, arguments: List<String>): ProcessHandler {
-        val interpreter = interpreter(project) ?: return localHandler(root, script, arguments)
+    private fun createHandler(project: Project, root: VirtualFile, script: VirtualFile, arguments: List<String>, interactive: Boolean): ProcessHandler {
+        val interpreter = interpreter(project) ?: return localHandler(root, script, arguments, interactive)
         val settings = PhpCommandSettingsBuilder(project, interpreter).build()
         settings.setWorkingDir(root.path)
         settings.setScript(script.path)
         settings.addArguments(arguments)
         if (!settings.isRemote) settings.addArguments(colorOption(arguments))
         val commandLine = settings.createGeneralCommandLine()
+        if (interactive) commandLine.withEnvironment(INTERACTIVE_VARIABLE, "1")
         if (!settings.isRemote) return KillableColoredProcessHandler(commandLine.withCharset(StandardCharsets.UTF_8))
         val disabled = PhpRemoteInterpreterManager.getRemoteInterpreterPluginIsDisabledErrorMessage()
         val manager = PhpRemoteInterpreterManager.getInstance() ?: throw ExecutionException(disabled)
@@ -111,10 +123,11 @@ object XfCommandRunner {
         return manager.getRemoteProcessHandler(project, data, commandLine, false, *settings.additionalMappings)
     }
 
-    private fun localHandler(root: VirtualFile, script: VirtualFile, arguments: List<String>): ProcessHandler {
+    private fun localHandler(root: VirtualFile, script: VirtualFile, arguments: List<String>, interactive: Boolean): ProcessHandler {
         val commandLine = GeneralCommandLine(listOf(PHP, script.name) + arguments + colorOption(arguments))
             .withWorkingDirectory(Path.of(root.path))
             .withCharset(StandardCharsets.UTF_8)
+        if (interactive) commandLine.withEnvironment(INTERACTIVE_VARIABLE, "1")
         return try {
             KillableColoredProcessHandler(commandLine)
         } catch (error: ExecutionException) {

@@ -1,0 +1,9 @@
+public function actionIndex(ParameterBag $params)
+{
+    $reply = parent::actionIndex($params);
+    if ($reply instanceof \XF\Mvc\Reply\View)
+    {
+    }
+
+    return $reply;
+}

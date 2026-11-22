@@ -12,6 +12,8 @@ import com.jetbrains.php.lang.psi.elements.Method
 import com.jetbrains.php.lang.psi.elements.Parameter
 import com.jetbrains.php.lang.psi.elements.PhpClass
 import com.jetbrains.php.lang.psi.resolve.types.PhpType
+import nt.xenforo.php.XfEntityField
+import nt.xenforo.php.XfEntityStructures
 
 object XfPhpMembers {
     private const val ENTITY_BASE = "\\XF\\Mvc\\Entity\\Entity"
@@ -40,6 +42,9 @@ object XfPhpMembers {
                 if (isColumn(field)) members.putIfAbsent(field.name, property(project, field))
             }
         }
+        for (field in structureFields(project, type)) {
+            members.putIfAbsent(field.name, structureMember(project, field))
+        }
         for (phpClass in classes) {
             for (method in phpClass.methods) {
                 if (isVisible(method)) members.putIfAbsent(method.name + "()", method(project, method))
@@ -55,9 +60,10 @@ object XfPhpMembers {
             return classes.firstNotNullOfOrNull { phpClass -> phpClass.findMethodByName(name)?.takeIf(::isVisible) }?.let { method(project, it) }
         }
         classes.firstNotNullOfOrNull { phpClass -> phpClass.findFieldByName(name, false)?.takeIf(::isVisible) }?.let { return property(project, it) }
-        return classes(project, rowEntities(type))
+        classes(project, rowEntities(type))
             .firstNotNullOfOrNull { phpClass -> phpClass.findFieldByName(name, false)?.takeIf(::isColumn) }
-            ?.let { property(project, it) }
+            ?.let { return property(project, it) }
+        return structureFields(project, type).firstOrNull { it.name == name }?.let { structureMember(project, it) }
     }
 
     fun method(project: Project, className: String, methodName: String): PsiElement? {
@@ -130,7 +136,18 @@ object XfPhpMembers {
         resultType = { objectType(project, method.type) },
     )
 
-    private fun objectType(project: Project, type: PhpType): XfValueType? {
+    private fun structureFields(project: Project, type: XfValueType.PhpObject): List<XfEntityField> =
+        type.classes.filter { XfEntityStructures.isEntity(project, it) }.flatMap { XfEntityStructures.of(project, it).values }
+
+    private fun structureMember(project: Project, field: XfEntityField): XfMember = XfMember(
+        field.name,
+        XfMemberKind.PROPERTY,
+        typeText = { field.type ?: field.entity?.substringAfterLast('\\') },
+        element = { field.element },
+        resultType = { field.entity?.let { XfValueType.PhpObject(listOf(it)) } },
+    )
+
+    fun objectType(project: Project, type: PhpType): XfValueType? {
         val classes = type.global(project).filterPrimitives().filterNull().filterMixed().types
             .filter { it.startsWith("\\") && !it.endsWith("[]") }
         return if (classes.isEmpty()) null else XfValueType.PhpObject(classes)

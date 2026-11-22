@@ -19,6 +19,7 @@ import javax.swing.Icon
 private const val MACRO_KEY_PREFIX = "m:"
 private const val ADD_ONS_FOLDER = "addons"
 private const val ADD_ON_FILE = "addon.json"
+private const val FAR_COLUMN = 80
 
 data class XfSymbolLocation(val file: VirtualFile, val symbol: XfSymbol) {
     val isOutput: Boolean
@@ -122,7 +123,18 @@ class XfSymbolTarget(
     override fun canNavigateToSource(): Boolean = canNavigate()
 
     override fun navigate(requestFocus: Boolean) {
-        OpenFileDescriptor(project, file, offset).navigate(requestFocus)
+        OpenFileDescriptor(project, file, visibleOffset()).navigate(requestFocus)
+    }
+
+    fun visibleOffset(): Int {
+        val document = FileDocumentManager.getInstance().getDocument(file) ?: return offset
+        if (offset > document.textLength) return offset
+        val start = document.getLineStartOffset(document.getLineNumber(offset))
+        if (offset - start <= FAR_COLUMN) return offset
+        val text = document.charsSequence
+        var indent = start
+        while (indent < offset && (text[indent] == ' ' || text[indent] == '\t')) indent++
+        return indent
     }
 
     override fun equals(other: Any?): Boolean = other is XfSymbolTarget && other.file == file && other.offset == offset

@@ -39,6 +39,9 @@ import nt.xenforo.psi.XfReferenceHost
 import nt.xenforo.psi.XfTagHeader
 import nt.xenforo.psi.XfTestExpr
 import nt.xenforo.psi.XfTypes
+import nt.xenforo.php.XfPhpNames
+import nt.xenforo.php.XfTemplateParams
+import nt.xenforo.lang.XfTemplateFiles
 import nt.xenforo.reference.XfHtmlHandlerReference
 import nt.xenforo.reference.XfNameKind
 import nt.xenforo.reference.XfNameSlot
@@ -50,7 +53,7 @@ private const val OPTION_EXPLAIN_PREFIX = "option_explain."
 
 class XfDocumentationTargetProvider : DocumentationTargetProvider {
     override fun documentationTargets(file: PsiFile, offset: Int): List<DocumentationTarget> {
-        if (file.viewProvider !is XfFileViewProvider) return emptyList()
+        if (file.viewProvider !is XfFileViewProvider) return listOfNotNull(XfPhpNames.documentation(file, offset))
         XfHtmlHandlerReference.at(file, offset)?.let { return listOf(XfDocumentation.handler(file.project, it.key, it.value)) }
         for (candidate in listOf(offset, offset - 1)) {
             if (candidate < 0) continue
@@ -109,9 +112,9 @@ object XfDocumentation {
         val required = info.required.joinToString("") { " $it=\"…\"" }
         val code = if (info.block) "<xf:${info.name}$required>…</xf:${info.name}>" else "<xf:${info.name}$required />"
         val sections = buildList {
-            if (info.required.isNotEmpty()) add(message("doc.section.required") to sectionCode(info.required.joinToString(", ")))
+            if (info.required.isNotEmpty()) add(message("doc.section.required") to codeList(info.required))
             val optional = info.attributes.filter { it !in info.required }
-            if (optional.isNotEmpty()) add(message("doc.section.attributes") to sectionCode(optional.joinToString(", ")))
+            if (optional.isNotEmpty()) add(message("doc.section.attributes") to codeList(optional))
             definition?.let { add(message("doc.section.implemented.by") to sectionCode(it.classFqn.removePrefix("\\"))) }
             definition?.registration?.let { add(definedIn(listOf(it))) }
         }
@@ -167,8 +170,18 @@ object XfDocumentation {
 
     private fun variable(element: PsiElement): XfDocumentationTarget? {
         val name = element.text.removePrefix("$")
-        if (name != XfGlobals.ROOT) return null
+        if (name != XfGlobals.ROOT) return parameter(element, name)
         return XfDocumentationTarget("\$$name", AllIcons.Nodes.Variable, bold("\$$name"), message("doc.global.root"))
+    }
+
+    private fun parameter(element: PsiElement, name: String): XfDocumentationTarget? {
+        val file = element.containingFile ?: return null
+        if (DumbService.isDumb(file.project) || XfTemplateParams.of(file)[name] == null) return null
+        val virtualFile = file.originalFile.virtualFile ?: return null
+        val type = XfTemplateFiles.templateType(virtualFile) ?: return null
+        val sources = XfTemplateParams.calls(file.project, type, XfTemplateFiles.templateTitle(virtualFile)).map(XfTemplateParams::location).distinct()
+        val sections = listOf(message("doc.section.passed.by") to sources.joinToString("<br>") { sectionCode(it) })
+        return XfDocumentationTarget("\$$name", AllIcons.Nodes.Variable, bold("\$$name") + typeSuffix(XfTemplateParams.presentableType(file, name)), message("doc.kind.view.param"), sections)
     }
 
     private fun member(expression: XfAccessExpression, element: PsiElement): XfDocumentationTarget? {
@@ -204,7 +217,7 @@ object XfDocumentation {
             .joinToString("<br>")
         val sections = buildList {
             XfOptionDetail.editFormat(detail).takeIf { it.isNotEmpty() }?.let { add(message("doc.section.edit.format") to sectionCode(it)) }
-            XfOptionDetail.subOptions(detail).takeIf { it.isNotEmpty() }?.let { add(message("doc.section.sub.options") to sectionCode(it.joinToString(", "))) }
+            XfOptionDetail.subOptions(detail).takeIf { it.isNotEmpty() }?.let { add(message("doc.section.sub.options") to codeList(it)) }
             definedIn(project, XfSymbolKeys.option(member.name))?.let { add(it) }
         }
         return XfDocumentationTarget(member.name, AllIcons.Nodes.Property, plain(path) + bold(member.name) + typeSuffix(member.typeText), content, sections)
@@ -226,7 +239,11 @@ object XfDocumentation {
         val name = slot.name(host)
         if (name.isEmpty()) return null
         val key = slot.keys(host).firstOrNull { XfSymbols.locations(project, it).isNotEmpty() } ?: return null
-        return when (slot.kind) {
+        return symbol(project, slot.kind, slot.keyPrefix, key, name)
+    }
+
+    fun symbol(project: Project, kind: XfNameKind, keyPrefix: String, key: String, name: String): XfDocumentationTarget {
+        return when (kind) {
             XfNameKind.PHRASE -> {
                 val text = XfSymbols.phraseText(project, name).orEmpty()
                 XfDocumentationTarget(name, AllIcons.Nodes.Tag, plain("phrase ") + bold(name), multiline(text), listOfNotNull(definedIn(project, key)))
@@ -235,7 +252,7 @@ object XfDocumentation {
                 val type = key.removePrefix("t:").substringBefore(':')
                 XfDocumentationTarget(name, XfIcons.FILE, plain("$type:") + bold(name), message("doc.kind.template"), listOfNotNull(definedIn(project, key)))
             }
-            XfNameKind.MACRO -> macro(project, slot, key, name)
+            XfNameKind.MACRO -> macro(project, keyPrefix, key, name)
             XfNameKind.ROUTE -> {
                 val route = key.substringAfter("r:").substringAfter(':')
                 val controller = XfSymbols.detail(project, key)?.takeIf { it.isNotEmpty() }
@@ -243,6 +260,9 @@ object XfDocumentation {
                 XfDocumentationTarget(route, AllIcons.Nodes.Related, bold(route), message("doc.kind.route"), sections)
             }
             XfNameKind.HANDLER -> handler(project, key, name)
+            XfNameKind.WIDGET_POSITION -> XfDocumentationTarget(name, AllIcons.Nodes.Plugin, plain("widget position ") + bold(name), message("doc.kind.widget.position"), listOfNotNull(definedIn(project, key)))
+            XfNameKind.PERMISSION -> XfDocumentationTarget(name, AllIcons.Nodes.Padlock, plain("permission ") + bold(key.substringAfter(':').replace(':', '.')), message("doc.kind.permission"), listOfNotNull(definedIn(project, key)))
+            XfNameKind.EXTENSION -> XfDocumentationTarget(name, AllIcons.Nodes.Template, plain("extension ") + bold(name), "")
             XfNameKind.PROPERTY -> {
                 val title = XfSymbols.detail(project, key)?.takeIf { it.isNotEmpty() }?.let(::escape)
                 XfDocumentationTarget(name, AllIcons.Nodes.Property, plain("property ") + bold(name), title ?: message("doc.kind.property"), listOfNotNull(definedIn(project, key)))
@@ -257,8 +277,8 @@ object XfDocumentation {
         return XfDocumentationTarget(name, AllIcons.Nodes.Class, plain("$name: ") + bold(className), message("doc.kind.handler"), sections)
     }
 
-    private fun macro(project: Project, slot: XfNameSlot, key: String, name: String): XfDocumentationTarget {
-        val template = slot.keyPrefix.removePrefix("m:").substringAfter(':').removeSuffix(":")
+    private fun macro(project: Project, keyPrefix: String, key: String, name: String): XfDocumentationTarget {
+        val template = keyPrefix.removePrefix("m:").substringAfter(':').removeSuffix(":")
         val arguments = XfSymbols.detail(project, key).orEmpty()
         val definition = plain("$template::") + bold(name) + plain("($arguments)")
         return XfDocumentationTarget(name, AllIcons.Nodes.Method, definition, message("doc.kind.macro"), listOfNotNull(definedIn(project, key)))
@@ -280,6 +300,8 @@ object XfDocumentation {
     private fun plain(text: String): String = escape(text)
 
     private fun sectionCode(text: String): String = "<code>${escape(text)}</code>"
+
+    private fun codeList(items: List<String>): String = items.joinToString(", ") { sectionCode(it) }
 
     private fun multiline(text: String): String = escape(text.trim()).replace("\n", "<br>")
 

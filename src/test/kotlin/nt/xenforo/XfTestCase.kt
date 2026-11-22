@@ -1,9 +1,19 @@
 package nt.xenforo
 
+import com.intellij.openapi.application.PathManager
+import com.intellij.openapi.vfs.newvfs.impl.VfsRootAccess
 import com.intellij.psi.PsiFile
+import nt.xenforo.json.XfJsonSchemaProviderFactory
+import java.io.File
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 abstract class XfTestCase : BasePlatformTestCase() {
+    override fun setUp() {
+        super.setUp()
+        val pluginJar = PathManager.getJarPathForClass(XfJsonSchemaProviderFactory::class.java) ?: return
+        VfsRootAccess.allowRootAccess(testRootDisposable, File(pluginJar).parent)
+    }
+
     protected fun configureTemplate(text: String, name: String = "test.html", type: String = "public"): PsiFile {
         val caret = text.indexOf(CARET)
         val content = if (caret >= 0) text.removeRange(caret, caret + CARET.length) else text

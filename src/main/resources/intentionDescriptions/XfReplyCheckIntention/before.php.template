@@ -1,0 +1,4 @@
+public function actionIndex(ParameterBag $params)
+{
+    <spot>return parent::actionIndex($params);</spot>
+}

@@ -32,8 +32,10 @@ class XfReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(psiElement(XfAttributeValue::class.java), XfNameReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfAttributeValue::class.java), XfJsFileReferenceProvider())
+        registrar.registerReferenceProvider(psiElement(XfAttributeValue::class.java), XfCallbackReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfStringExpr::class.java), XfNameReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfAccessExpression::class.java), XfMemberReferenceProvider())
+        registrar.registerReferenceProvider(psiElement(XfAccessExpression::class.java), XfVariableReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfNamedCall::class.java), XfCallableReferenceProvider())
     }
 }
@@ -68,7 +70,7 @@ private val CALLABLE_RESOLVER = ResolveCache.AbstractResolver<XfCallableReferenc
 private class XfMemberReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val expression = element as? XfAccessExpression ?: return PsiReference.EMPTY_ARRAY
-        if (XfAccess.rootType(expression.variableName) == null) return PsiReference.EMPTY_ARRAY
+        if (XfAccess.rootType(expression) == null) return PsiReference.EMPTY_ARRAY
         val start = expression.textRange.startOffset
         return expression.segments.mapIndexedNotNull { index, segment ->
             if (segment.name == null) return@mapIndexedNotNull null
@@ -120,6 +122,7 @@ class XfNameReference(host: XfReferenceHost, val slot: XfNameSlot) :
         if (DumbService.isDumb(project)) return ResolveResult.EMPTY_ARRAY
         val name = slot.name(element)
         if (slot.kind == XfNameKind.HANDLER) return PsiElementResolveResult.createResults(XfJsHandlers.targets(project, slot.keyPrefix + name))
+        if (slot.kind == XfNameKind.EXTENSION) return PsiElementResolveResult.createResults(XfTemplateExtensions.targets(element, name))
         if (XfNameSlots.isCurrentTemplate(element, slot)) {
             XfLocalMacros.definitions(element.containingFile)[name]?.let { return PsiElementResolveResult.createResults(it) }
         }

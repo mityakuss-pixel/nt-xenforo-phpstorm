@@ -25,6 +25,7 @@ import com.intellij.openapi.util.Ref
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.FileViewProvider
 import com.intellij.psi.PsiDocumentManager
+import com.intellij.psi.codeStyle.CodeStyleManager
 import com.intellij.psi.templateLanguages.MultipleLangCommentProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiFile
@@ -38,6 +39,7 @@ import nt.xenforo.lang.XfFileViewProvider
 import nt.xenforo.lang.XfLanguage
 import nt.xenforo.model.XfTagCatalog
 import nt.xenforo.psi.XfTagElement
+import nt.xenforo.psi.XfTagHeader
 import nt.xenforo.psi.XfTypes
 
 private val ACCESS_OWNERS = setOf(XfTypes.VARIABLE, XfTypes.IDENTIFIER, XfTypes.RPAREN)
@@ -90,11 +92,33 @@ class XfTypedHandler : TypedHandlerDelegate() {
         val offset = editor.caretModel.offset
         PsiDocumentManager.getInstance(project).commitDocument(document)
         val token = baseElementAt(file, offset - 1) ?: return
+        if ((token.elementType == XfTypes.TAG_END || token.elementType == XfTypes.TAG_SELF_CLOSE) &&
+            (token.parent as? XfTagHeader)?.tagName?.lowercase() in BRANCH_TAGS
+        ) {
+            XfBranchIndent.adjust(project, editor, file)
+            return
+        }
         if (token.elementType != XfTypes.TAG_END || token.parent.elementType != XfTypes.START_TAG) return
         val tag = token.parent.parent as? XfTagElement ?: return
         val name = tag.tagName
         if (name.isEmpty() || tag.closingTag != null || name.lowercase() in BRANCH_TAGS) return
         document.insertString(offset, "</xf:$name>")
+    }
+}
+
+object XfBranchIndent {
+    private val BRANCH_LINE = Regex("""^\s*<xf:(else|elseif)\b""", RegexOption.IGNORE_CASE)
+
+    fun adjust(project: Project, editor: Editor, file: PsiFile) {
+        val document = editor.document
+        val line = document.getLineNumber(editor.caretModel.offset)
+        val start = document.getLineStartOffset(line)
+        if (!BRANCH_LINE.containsMatchIn(document.charsSequence.subSequence(start, document.getLineEndOffset(line)))) return
+        if (document.charsSequence.subSequence(0, start).isBlank()) return
+        val manager = PsiDocumentManager.getInstance(project)
+        manager.commitDocument(document)
+        val base = file.viewProvider.getPsi(XfLanguage) ?: file
+        CodeStyleManager.getInstance(project).adjustLineIndent(base, start)
     }
 }
 

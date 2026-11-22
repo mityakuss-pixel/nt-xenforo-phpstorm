@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XenForo addon.json",
+  "type": "object",
+  "required": ["title", "version_id", "version_string"],
+  "additionalProperties": false,
+  "properties": {
+    "legacy_addon_id": {
+      "type": "string",
+      "description": "ID of the XenForo 1 add-on that this add-on replaces"
+    },
+    "title": {
+      "type": "string",
+      "description": "Add-on title shown in the admin control panel"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description shown in the admin control panel"
+    },
+    "version_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "aabbccde: major, minor, patch, state (1 alpha, 3 beta, 5 release candidate, 7 stable, 9 patch level) and state version, for example 1020370 for 1.2.3. Must grow with every release."
+    },
+    "version_string": {
+      "type": "string",
+      "description": "Version shown to users, for example 1.2.3 or 1.2.3 Beta 1"
+    },
+    "dev": {
+      "type": "string",
+      "description": "Developer name"
+    },
+    "dev_url": {
+      "type": "string",
+      "description": "Link for the developer name"
+    },
+    "faq_url": {
+      "type": "string",
+      "description": "Link to the FAQ"
+    },
+    "support_url": {
+      "type": "string",
+      "description": "Link to support"
+    },
+    "extra_urls": {
+      "type": "object",
+      "description": "Extra links: the key is the link text, the value is the URL",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "require": {
+      "type": "object",
+      "description": "Requirements: XF, php, php-ext/<extension> or another add-on ID mapped to [version, \"text shown when it is missing\"]",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": [
+          {
+            "type": ["integer", "string"],
+            "description": "Version ID for XenForo and add-ons, version string for PHP and extensions, or * for any version"
+          },
+          {
+            "type": "string",
+            "description": "Text shown when the requirement is not met"
+          }
+        ]
+      }
+    },
+    "icon": {
+      "type": "string",
+      "description": "Font Awesome icon name such as fa-home, or a path to an image in the add-on"
+    },
+    "composer_autoload": {
+      "type": "string",
+      "description": "Path from the add-on root to the Composer vendor folder with autoload_psr4.php"
+    },
+    "options": {
+      "type": "object"
+    }
+  }
+}

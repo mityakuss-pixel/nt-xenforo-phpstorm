@@ -1,0 +1,46 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "XenForo build.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "additional_files": {
+      "type": "array",
+      "description": "Paths copied into the release, looked up in _files first, for example js/vendor/addon",
+      "items": {
+        "type": "string"
+      }
+    },
+    "minify": {
+      "description": "JavaScript files to minify into .min.js, or * for every file under js",
+      "oneOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "const": "*"
+        }
+      ]
+    },
+    "rollup": {
+      "type": "object",
+      "description": "Combined JavaScript files: the key is the output file, the value lists the input files",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "exec": {
+      "type": "array",
+      "description": "Shell commands run before packaging; {title}, {version_string} and {version_id} are replaced",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -24,11 +24,19 @@ import com.intellij.util.ProcessingContext
 import javax.swing.Icon
 import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.index.XfSymbols
+import com.intellij.codeInsight.completion.PrioritizedLookupElement
+import nt.xenforo.psi.XfReferenceHost
+import nt.xenforo.reference.XfLocalMacros
+import nt.xenforo.reference.XfNameKind
+import nt.xenforo.reference.XfNameSlots
+import nt.xenforo.editor.XfBranchIndent
 import nt.xenforo.lang.XfIcons
 import nt.xenforo.meta.XfGlobals
 import nt.xenforo.meta.XfTagInfo
 import nt.xenforo.index.XfCallableKind
 import nt.xenforo.model.XfAccess
+import nt.xenforo.php.XfTemplateParams
+import com.intellij.openapi.project.DumbService
 import nt.xenforo.model.XfCallables
 import nt.xenforo.model.XfMember
 import nt.xenforo.model.XfMemberKind
@@ -108,6 +116,7 @@ private object TagInsertHandler : InsertHandler<LookupElement> {
             else -> tail + ending.length
         }
         context.editor.caretModel.moveToOffset(caret)
+        if (info.name == "else" || info.name == "elseif") XfBranchIndent.adjust(context.project, context.editor, context.file)
     }
 }
 
@@ -135,8 +144,37 @@ private class AttributeNameProvider : CompletionProvider<CompletionParameters>()
             result.addElement(lookup)
         }
         if (header.tagName.equals("macro", ignoreCase = true)) {
+            for (argument in XfMacroArguments.ofCall(header)) {
+                val name = "arg-$argument"
+                if (name.lowercase() in existing) continue
+                val lookup = LookupElementBuilder.create(name).withIcon(AllIcons.Nodes.Parameter).withInsertHandler(AttributeInsertHandler)
+                result.addElement(PrioritizedLookupElement.withPriority(lookup, MACRO_ARGUMENT_PRIORITY))
+            }
             result.addElement(LookupElementBuilder.create("arg-").withInsertHandler(null).withTypeText("arg-name=\"\"", true))
         }
+    }
+}
+
+private const val MACRO_ARGUMENT_PRIORITY = 10.0
+
+object XfMacroArguments {
+    private const val ID_ATTRIBUTE = "id"
+    private const val NAME_ATTRIBUTE = "name"
+    private const val SEPARATOR = ", "
+
+    fun ofCall(header: XfTagHeader): List<String> {
+        val tag = header.parent as? XfTagElement
+        if (tag != null && tag.isBlock && tag.header == header) return emptyList()
+        val host = (header.findAttribute(ID_ATTRIBUTE) ?: header.findAttribute(NAME_ATTRIBUTE))?.attributeValue as? XfReferenceHost ?: return emptyList()
+        val slot = XfNameSlots.of(host).lastOrNull { it.kind == XfNameKind.MACRO } ?: return emptyList()
+        val name = slot.name(host).takeIf { it.isNotEmpty() } ?: return emptyList()
+        val arguments = if (XfNameSlots.isCurrentTemplate(host, slot)) {
+            XfLocalMacros.definitions(host.containingFile)[name]?.let(XfLocalMacros::arguments)
+        } else {
+            if (DumbService.isDumb(host.project)) return emptyList()
+            slot.keys(host).firstNotNullOfOrNull { XfSymbols.detail(host.project, it) }
+        }
+        return arguments?.split(SEPARATOR)?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
     }
 }
 
@@ -259,10 +297,14 @@ private class VariableProvider : CompletionProvider<CompletionParameters>(), Dum
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
         val names = LinkedHashSet<String>()
         names += XfGlobals.VARIABLES
-        collectVariableNames(parameters.originalFile, names)
+        val file = parameters.originalFile
+        val params = if (DumbService.isDumb(file.project)) emptyMap() else XfTemplateParams.of(file)
+        names += params.keys
+        collectVariableNames(file, names)
         for (name in names) {
             if (name.isEmpty()) continue
-            result.addElement(LookupElementBuilder.create(name).withIcon(AllIcons.Nodes.Variable).withPresentableText("$$name"))
+            val lookup = LookupElementBuilder.create(name).withIcon(AllIcons.Nodes.Variable).withPresentableText("$$name")
+            result.addElement(if (name in params) lookup.withTypeText(XfTemplateParams.presentableType(file, name), true).bold() else lookup)
         }
     }
 

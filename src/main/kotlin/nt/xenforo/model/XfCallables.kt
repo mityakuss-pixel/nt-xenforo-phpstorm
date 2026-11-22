@@ -30,6 +30,10 @@ class XfCallableDoc(val description: String?, val parameters: List<Pair<String, 
 
 object XfCallables {
     private const val TEMPLATER = "\\XF\\Template\\Templater"
+    private const val COMPILER = "\\XF\\Template\\Compiler"
+    private const val COMPILER_FUNCTIONS = "defaultFunctions"
+    private const val COMPILER_FUNCTION_NAMESPACE = "\\XF\\Template\\Compiler\\Func\\"
+    private const val COMPILE_METHOD = "compile"
     private const val THIS = "this"
 
     fun builtins(kind: XfCallableKind): Map<String, String> = when (kind) {
@@ -58,7 +62,7 @@ object XfCallables {
 
     fun target(project: Project, kind: XfCallableKind, name: String): PsiElement? {
         if (DumbService.isDumb(project)) return null
-        if (isBuiltin(kind, name)) return templaterMethod(project, kind, name)
+        if (isBuiltin(kind, name)) return templaterMethod(project, kind, name) ?: compilerFunction(project, kind, name)
         val location = registration(project, kind, name) ?: return null
         return customFunction(project, location) ?: registrationElement(project, location)
     }
@@ -141,6 +145,18 @@ object XfCallables {
             .firstOrNull { (it.key as? StringLiteralExpression)?.contents.equals(name, ignoreCase = true) }
             ?.value as? StringLiteralExpression ?: return null
         return templater.findMethodByName(method.contents)
+    }
+
+    private fun compilerFunction(project: Project, kind: XfCallableKind, name: String): PsiElement? {
+        if (kind != XfCallableKind.FUNCTION) return null
+        val index = PhpIndex.getInstance(project)
+        val compiler = index.getClassesByFQN(COMPILER).firstOrNull() ?: return null
+        val array = compiler.findFieldByName(COMPILER_FUNCTIONS, false)?.defaultValue as? ArrayCreationExpression ?: return null
+        val className = array.hashElements
+            .firstOrNull { (it.key as? StringLiteralExpression)?.contents.equals(name, ignoreCase = true) }
+            ?.value as? StringLiteralExpression ?: return null
+        val phpClass = index.getClassesByFQN(COMPILER_FUNCTION_NAMESPACE + className.contents).firstOrNull() ?: return null
+        return phpClass.findOwnMethodByName(COMPILE_METHOD) ?: phpClass
     }
 
     private fun registrationElement(project: Project, location: XfSymbolLocation): PsiElement? {

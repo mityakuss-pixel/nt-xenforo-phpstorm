@@ -1,0 +1,7 @@
+<?php
+
+namespace Vendor\AddOn\XF\Entity;
+
+class User extends XFCP_User
+{
+}

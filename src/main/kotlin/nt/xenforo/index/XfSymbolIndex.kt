@@ -36,7 +36,7 @@ class XfSymbolIndex : FileBasedIndexExtension<String, XfSymbol>() {
 
     override fun getValueExternalizer(): DataExternalizer<XfSymbol> = XfSymbolExternalizer
 
-    override fun getVersion(): Int = 5
+    override fun getVersion(): Int = 10
 
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { XfSymbolScanner.isIndexed(it) }
 
@@ -64,6 +64,18 @@ object XfSymbolKeys {
     const val OPTION_PREFIX: String = "o:"
     fun addOn(id: String): String = "a:$id"
     const val ADD_ON_PREFIX: String = "a:"
+    fun extension(toClass: String): String = "x:$toClass"
+    const val EXTENSION_PREFIX: String = "x:"
+    fun modification(type: String, template: String, key: String): String = "tm:$type:$template:$key"
+    fun modificationPrefix(type: String, template: String): String = "tm:$type:$template:"
+    const val MODIFICATION_PREFIX: String = "tm:"
+    fun view(type: String, title: String): String = "v:$type:$title"
+    fun widgetPosition(id: String): String = "wp:$id"
+    const val WIDGET_POSITION_PREFIX: String = "wp:"
+    fun permission(group: String, id: String): String = "pm:$group:$id"
+    fun permissionPrefix(group: String): String = "pm:$group:"
+    fun adminPermission(id: String): String = "ap:$id"
+    const val ADMIN_PERMISSION_PREFIX: String = "ap:"
 }
 
 internal fun VirtualFile.hasAncestorChain(vararg names: String): Boolean {

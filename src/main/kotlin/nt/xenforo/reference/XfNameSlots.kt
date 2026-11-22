@@ -8,6 +8,7 @@ import nt.xenforo.psi.XfTagElement
 import nt.xenforo.index.XfJsHandlers
 import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.lang.XfTemplateFiles
+import nt.xenforo.psi.XfAccessExpression
 import nt.xenforo.psi.XfArguments
 import nt.xenforo.psi.XfAttribute
 import nt.xenforo.psi.XfFile
@@ -16,7 +17,7 @@ import nt.xenforo.psi.XfReferenceHost
 import nt.xenforo.psi.XfStringExpr
 import nt.xenforo.psi.XfTypes
 
-enum class XfNameKind { TEMPLATE, MACRO, PHRASE, ROUTE, PROPERTY, HANDLER }
+enum class XfNameKind { TEMPLATE, MACRO, PHRASE, ROUTE, PROPERTY, HANDLER, WIDGET_POSITION, EXTENSION, PERMISSION }
 
 data class XfNameSlot(
     val kind: XfNameKind,
@@ -36,6 +37,8 @@ data class XfNameSlot(
 
 private val ROUTE_MODIFIER = Regex("""^[a-z_]+:""")
 private val INCLUDE_TAGS = setOf("include", "wrap", "extends")
+private val EXTENSION_TAGS = setOf("extension", "extensionparent", "extensionvalue")
+private const val NODE_PERMISSION_GROUP = "forum"
 private val HANDLER_NAME = Regex("""[A-Za-z][\w-]*""")
 
 object XfPhraseNames {
@@ -101,7 +104,9 @@ object XfNameSlots {
         return when {
             tag in INCLUDE_TAGS && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type))
             tag == "macro" && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type))
-            tag == "macro" && name == "id" -> macroSlots(value, range.startOffset, type, currentTitle(host))
+            tag == "macro" && (name == "id" || name == "extends") -> macroSlots(value, range.startOffset, type, currentTitle(host))
+            tag == "widgetpos" && name == "id" -> listOf(XfNameSlot(XfNameKind.WIDGET_POSITION, range, XfSymbolKeys.WIDGET_POSITION_PREFIX))
+            tag in EXTENSION_TAGS && name == "id" -> listOf(XfNameSlot(XfNameKind.EXTENSION, range, ""))
             tag == "macro" && name == "name" -> {
                 val template = header.findAttribute("template")?.attributeValue?.value
                 if (template == null) {
@@ -163,6 +168,7 @@ object XfNameSlots {
 
     private fun stringSlots(host: XfStringExpr): List<XfNameSlot> {
         val arguments = host.parent as? XfArguments ?: return emptyList()
+        if (arguments.parent is XfAccessExpression) return methodSlots(host, arguments)
         val call = arguments.parent as? XfFunctionCallExpr ?: return emptyList()
         val index = arguments.exprList.indexOf(host)
         val range = host.valueRange
@@ -190,6 +196,20 @@ object XfNameSlots {
             }
             else -> emptyList()
         }
+    }
+
+    private fun methodSlots(host: XfStringExpr, arguments: XfArguments): List<XfNameSlot> {
+        var previous = arguments.prevSibling
+        while (previous != null && previous.text.isBlank()) previous = previous.prevSibling
+        val method = previous?.text?.lowercase() ?: return emptyList()
+        val index = arguments.exprList.indexOf(host)
+        val prefix = when (method to index) {
+            "haspermission" to 1 -> (arguments.exprList.firstOrNull() as? XfStringExpr)?.value?.let(XfSymbolKeys::permissionPrefix)
+            "hasnodepermission" to 1, "hascontentpermission" to 1 -> XfSymbolKeys.permissionPrefix(NODE_PERMISSION_GROUP)
+            "hasadminpermission" to 0 -> XfSymbolKeys.ADMIN_PERMISSION_PREFIX
+            else -> null
+        } ?: return emptyList()
+        return listOf(XfNameSlot(XfNameKind.PERMISSION, host.valueRange, prefix))
     }
 
     private fun routeSlot(value: String, start: Int, type: String): XfNameSlot {
