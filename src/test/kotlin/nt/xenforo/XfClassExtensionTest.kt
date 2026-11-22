@@ -1,11 +1,18 @@
 package nt.xenforo
 
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.actionSystem.DataContext
+import com.intellij.openapi.actionSystem.impl.SimpleDataContext
 import com.intellij.openapi.vfs.VfsUtilCore
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiManager
 import com.intellij.testFramework.IndexingTestUtil
+import com.intellij.testFramework.TestActionEvent
 import com.jetbrains.php.PhpIndex
 import nt.xenforo.commands.XfAddOns
 import nt.xenforo.php.XfClassExtensions
 import nt.xenforo.php.XfExtendClass
+import nt.xenforo.php.XfExtendThisClassAction
 import nt.xenforo.php.XfProxyLibrary
 
 class XfClassExtensionTest : XfTestCase() {
@@ -123,6 +130,48 @@ class XfClassExtensionTest : XfTestCase() {
         myFixture.configureFromExistingVirtualFile(file.virtualFile)
         myFixture.editor.caretModel.moveToOffset(file.text.indexOf("class User") + 8)
         assertEmpty(myFixture.filterAvailableIntentions("Extend class in XenForo add-on"))
+    }
+
+    fun testExtendMenuItemFollowsClassUnderCaret() {
+        myFixture.configureByText("Usage.php", "<?php\n\n\$user = new \\XF\\Entity\\User<caret>();\n\$name = 'x';\n")
+        assertTrue(extendMenuVisible(editorContext()))
+        myFixture.editor.caretModel.moveToOffset(myFixture.file.text.indexOf("'x'"))
+        assertFalse(extendMenuVisible(editorContext()))
+    }
+
+    fun testExtendMenuItemIsHiddenOnExtension() {
+        val file = myFixture.addFileToProject(
+            "src/addons/Demo/Test/XF/Entity/User.php",
+            "<?php\n\nnamespace Demo\\Test\\XF\\Entity;\n\nclass User extends XFCP_User\n{\n}\n",
+        )
+        myFixture.configureFromExistingVirtualFile(file.virtualFile)
+        myFixture.editor.caretModel.moveToOffset(file.text.indexOf("class User") + 8)
+        assertFalse(extendMenuVisible(editorContext()))
+    }
+
+    fun testExtendMenuItemOnClassFileInProjectView() {
+        val core = myFixture.findFileInTempDir("src/XF/Entity/User.php")
+        val manager = PsiManager.getInstance(project)
+        assertTrue(extendMenuVisible(selectionContext(manager.findFile(core))))
+        assertFalse(extendMenuVisible(selectionContext(manager.findDirectory(core.parent))))
+    }
+
+    private fun editorContext(): DataContext = SimpleDataContext.builder()
+        .add(CommonDataKeys.PROJECT, project)
+        .add(CommonDataKeys.EDITOR, myFixture.editor)
+        .add(CommonDataKeys.PSI_FILE, myFixture.file)
+        .build()
+
+    private fun selectionContext(element: PsiElement?): DataContext = SimpleDataContext.builder()
+        .add(CommonDataKeys.PROJECT, project)
+        .add(CommonDataKeys.PSI_ELEMENT, element)
+        .build()
+
+    private fun extendMenuVisible(context: DataContext): Boolean {
+        val action = XfExtendThisClassAction()
+        val event = TestActionEvent.createTestEvent(action, context)
+        action.update(event)
+        return event.presentation.isEnabledAndVisible
     }
 
     fun testReplyCheckWrapsParentAction() {

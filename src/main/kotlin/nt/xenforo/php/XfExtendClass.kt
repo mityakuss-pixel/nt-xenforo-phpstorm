@@ -3,6 +3,7 @@ package nt.xenforo.php
 import com.intellij.codeInsight.intention.PsiElementBaseIntentionAction
 import com.intellij.codeInsight.hint.HintManager
 import com.intellij.openapi.actionSystem.ActionUpdateThread
+import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.editor.Editor
@@ -21,6 +22,7 @@ import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.jetbrains.php.PhpIndex
+import com.jetbrains.php.lang.psi.PhpFile
 import com.jetbrains.php.lang.psi.elements.ClassReference
 import com.jetbrains.php.lang.psi.elements.PhpClass
 import nt.xenforo.XfBundle.message
@@ -106,6 +108,20 @@ object XfExtendClass {
         if (reference != null) return reference.resolve() as? PhpClass
         val phpClass = PsiTreeUtil.getParentOfType(element, PhpClass::class.java, false) ?: return null
         return phpClass.takeIf { it.nameIdentifier?.textRange?.contains(element.textRange) == true }
+    }
+
+    fun extendableAtCaret(file: PsiFile, offset: Int): PhpClass? {
+        val phpClass = classAt(file.findElementAt(offset)) ?: offset.takeIf { it > 0 }?.let { classAt(file.findElementAt(it - 1)) }
+        return phpClass?.takeIf(::isXenForoClass)
+    }
+
+    fun extendableSelected(element: PsiElement?): PhpClass? {
+        val phpClass = when (element) {
+            is PhpClass -> element
+            is PhpFile -> PsiTreeUtil.findChildrenOfType(element, PhpClass::class.java).filterNot { it.isInterface || it.isTrait }.singleOrNull()
+            else -> null
+        }
+        return phpClass?.takeIf(::isXenForoClass)
     }
 
     private fun dashed(className: String): String = className.replace(Regex("[^a-zA-Z0-9_-]"), "-").trimStart('-')
@@ -200,5 +216,28 @@ class XfExtendClassAction : DumbAwareAction() {
         val file: PsiFile = event.getData(CommonDataKeys.PSI_FILE) ?: return null
         val phpClass = XfExtendClass.classAt(file.findElementAt(editor.caretModel.offset)) ?: return null
         return phpClass.fqn.trimStart(SEPARATOR).takeIf { XfExtendClass.isXenForoClass(phpClass) }
+    }
+}
+
+class XfExtendThisClassAction : AnAction() {
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
+
+    override fun update(event: AnActionEvent) {
+        event.presentation.isEnabledAndVisible = event.project != null && target(event) != null
+    }
+
+    override fun actionPerformed(event: AnActionEvent) {
+        val project = event.project ?: return
+        val phpClass = target(event) ?: return
+        val addOns = XfDevAddOns.list(project)
+        val selected = XfDevAddOns.preferred(project, addOns, event.getData(CommonDataKeys.VIRTUAL_FILE))
+        XfExtendClass.show(project, phpClass.fqn.trimStart(SEPARATOR), addOns, selected)
+    }
+
+    private fun target(event: AnActionEvent): PhpClass? {
+        val editor = event.getData(CommonDataKeys.EDITOR)
+        val file = event.getData(CommonDataKeys.PSI_FILE)
+        if (editor != null && file != null) return XfExtendClass.extendableAtCaret(file, editor.caretModel.offset)
+        return XfExtendClass.extendableSelected(event.getData(CommonDataKeys.PSI_ELEMENT) ?: file)
     }
 }

@@ -21,7 +21,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
 </ul>
 <h3>Add-on PHP code</h3>
 <ul>
-  <li><code>XFCP_</code> classes resolve to the classes they extend; Alt+Enter creates a class extension</li>
+  <li><code>XFCP_</code> classes resolve to the classes they extend; a class extension is created from the context menu or with Alt+Enter</li>
   <li>Short class names such as <code>'XF:User'</code> in finders, repositories, services, plugins and jobs</li>
   <li>Entity columns, relations and getters in <code>where()</code>, <code>order()</code>, <code>with()</code> and <code>get()</code>,
       including columns added by extensions</li>
@@ -175,6 +175,10 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         </group>
         <action id="nt.xenforo.CreateModification" class="nt.xenforo.modification.XfCreateModificationAction">
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action id="nt.xenforo.ExtendThisClass" class="nt.xenforo.php.XfExtendThisClassAction">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="nt.xenforo.AddOn"/>
         </action>
     </actions>
 </idea-plugin>
