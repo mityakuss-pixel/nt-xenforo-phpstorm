@@ -19,6 +19,8 @@ import nt.xenforo.index.XfSymbols
 import nt.xenforo.lang.XfIcons
 import nt.xenforo.psi.XfFile
 import nt.xenforo.psi.XfReferenceHost
+import nt.xenforo.psi.XfTagElement
+import nt.xenforo.reference.XfLocalMacros
 import nt.xenforo.reference.XfNameKind
 import nt.xenforo.reference.XfNameSlot
 import nt.xenforo.reference.XfNameSlots
@@ -34,7 +36,7 @@ class XfNameCompletionProvider : CompletionProvider<CompletionParameters>() {
         when (slot.kind) {
             XfNameKind.TEMPLATE -> addTemplates(project, slot, names, suffix = "")
             XfNameKind.MACRO -> {
-                addMacros(project, slot, names)
+                addMacros(project, slot, names, if (XfNameSlots.isCurrentTemplate(host, slot)) XfLocalMacros.definitions(host.containingFile) else null)
                 if (slot.range.startOffset == host.valueRange.startOffset && !prefix.contains(':')) {
                     val type = (host.containingFile.originalFile as? XfFile)?.templateType ?: return
                     addTemplates(project, XfNameSlot(XfNameKind.TEMPLATE, slot.range, XfSymbolKeys.templatePrefix(type)), names, suffix = "::")
@@ -43,6 +45,7 @@ class XfNameCompletionProvider : CompletionProvider<CompletionParameters>() {
             XfNameKind.PHRASE -> addDetailed(project, XfSymbolKeys.PHRASE_PREFIX, names, AllIcons.Nodes.Tag)
             XfNameKind.ROUTE -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Related)
             XfNameKind.PROPERTY -> addDetailed(project, XfSymbolKeys.PROPERTY_PREFIX, names, AllIcons.Nodes.Property)
+            XfNameKind.HANDLER -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Class)
         }
     }
 
@@ -56,10 +59,16 @@ class XfNameCompletionProvider : CompletionProvider<CompletionParameters>() {
         }
     }
 
-    private fun addMacros(project: Project, slot: XfNameSlot, result: CompletionResultSet) {
-        for (key in XfSymbols.keys(project, slot.keyPrefix)) {
-            val name = key.removePrefix(slot.keyPrefix)
-            val arguments = XfSymbols.detail(project, key).orEmpty()
+    private fun addMacros(project: Project, slot: XfNameSlot, result: CompletionResultSet, local: Map<String, XfTagElement>?) {
+        val macros = LinkedHashMap<String, String>()
+        if (local != null) {
+            for ((name, tag) in local) macros[name] = XfLocalMacros.arguments(tag)
+        } else {
+            for (key in XfSymbols.keys(project, slot.keyPrefix)) {
+                macros[key.removePrefix(slot.keyPrefix)] = XfSymbols.detail(project, key).orEmpty()
+            }
+        }
+        for ((name, arguments) in macros) {
             result.addElement(
                 LookupElementBuilder.create(name)
                     .withIcon(AllIcons.Nodes.Method)

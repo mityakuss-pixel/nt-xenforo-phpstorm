@@ -59,6 +59,7 @@ object XfSymbolScanner {
         val name = file.name
         if (name == METADATA_FILE) return false
         if (name == ADD_ON_FILE) return addOnId(file) != null
+        if (XfJsHandlers.isIndexed(file)) return true
         val parent = file.parent ?: return false
         if (parent.name == "_data") return name in DATA_FILES
         if (XfTemplateFiles.templateType(file) != null) return file.hasAncestorChain(parent.name, "templates", "_output")
@@ -69,6 +70,7 @@ object XfSymbolScanner {
         val result = HashMap<String, XfSymbol>()
         val parent = file.parent ?: return result
         when {
+            XfJsHandlers.isIndexed(file) -> XfJsHandlers.scan(text, result)
             file.name == ADD_ON_FILE -> addOnId(file)?.let { result[XfSymbolKeys.addOn(it)] = XfSymbol(0, detail(jsonFields(text)["title"].orEmpty())) }
             parent.name == "_data" -> when (file.name) {
                 "templates.xml" -> scanTemplatesXml(text, result)

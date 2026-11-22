@@ -75,4 +75,39 @@ class XfMacroTest : XfTestCase() {
         assertInstanceOf(target, XfTagElement::class.java)
         assertEquals("macro", ((target as XfTagElement).header as XfTagHeader).tagName)
     }
+
+    fun testGotoExistingDefinitionAfterUsage() {
+        configureTemplate("<xf:macro name=\"te<caret>st\" />\n\n<xf:macro name=\"test\">123</xf:macro>")
+        myFixture.performEditorAction("GotoDeclaration")
+        assertEquals(myFixture.file.text.lastIndexOf("<xf:macro"), myFixture.caretOffset)
+    }
+
+    fun testGotoTypedDefinitionAfterUsage() {
+        configureTemplate("<xf:macro name=\"te<caret>st\" />\n\n")
+        val usage = myFixture.caretOffset
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.textLength)
+        myFixture.type("<xf:macro name=\"test\">123</xf:macro>")
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        myFixture.editor.caretModel.moveToOffset(usage)
+        myFixture.performEditorAction("GotoDeclaration")
+        assertEquals(myFixture.file.text.lastIndexOf("<xf:macro"), myFixture.caretOffset)
+    }
+
+    fun testGotoTypedIdDefinition() {
+        configureTemplate("<xf:macro id=\"te<caret>st\" />\n\n")
+        val usage = myFixture.caretOffset
+        myFixture.editor.caretModel.moveToOffset(myFixture.editor.document.textLength)
+        myFixture.type("<xf:macro id=\"test\">123</xf:macro>")
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        myFixture.editor.caretModel.moveToOffset(usage)
+        myFixture.performEditorAction("GotoDeclaration")
+        assertEquals(myFixture.file.text.lastIndexOf("<xf:macro"), myFixture.caretOffset)
+    }
+
+    fun testLocalMacrosAreCompletedFromCurrentFile() {
+        configureTemplate("<xf:macro name=\"<caret>\" />\n\n<xf:macro name=\"alpha\" arg-user=\"!\">a</xf:macro>\n<xf:macro id=\"beta\">b</xf:macro>")
+        val variants = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
+        assertContainsElements(variants, "alpha", "beta")
+        assertDoesntContain(variants, "card")
+    }
 }

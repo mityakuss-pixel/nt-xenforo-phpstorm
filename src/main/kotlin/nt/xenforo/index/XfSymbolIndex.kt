@@ -36,7 +36,7 @@ class XfSymbolIndex : FileBasedIndexExtension<String, XfSymbol>() {
 
     override fun getValueExternalizer(): DataExternalizer<XfSymbol> = XfSymbolExternalizer
 
-    override fun getVersion(): Int = 4
+    override fun getVersion(): Int = 5
 
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { XfSymbolScanner.isIndexed(it) }
 

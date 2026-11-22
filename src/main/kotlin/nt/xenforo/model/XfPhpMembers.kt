@@ -77,7 +77,7 @@ object XfPhpMembers {
     }
 
     fun parameterText(parameter: Parameter): String = buildString {
-        val type = parameter.declaredType.takeUnless { it.isEmpty } ?: parameter.docType
+        val type = parameter.docType.takeUnless { it.isEmpty } ?: parameter.declaredType
         presentable(type)?.let { append(it).append(' ') }
         if (parameter.isPassByRef) append('&')
         if (parameter.isVariadic) append("...")

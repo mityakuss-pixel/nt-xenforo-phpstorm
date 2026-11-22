@@ -16,6 +16,7 @@ import com.intellij.psi.ResolveResult
 import com.intellij.psi.impl.source.resolve.ResolveCache
 import com.intellij.util.ProcessingContext
 import nt.xenforo.index.XfCallableKind
+import nt.xenforo.index.XfJsHandlers
 import nt.xenforo.index.XfSymbols
 import nt.xenforo.model.XfAccess
 import nt.xenforo.model.XfCallables
@@ -30,6 +31,7 @@ import nt.xenforo.psi.XfStringExpr
 class XfReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(psiElement(XfAttributeValue::class.java), XfNameReferenceProvider())
+        registrar.registerReferenceProvider(psiElement(XfAttributeValue::class.java), XfJsFileReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfStringExpr::class.java), XfNameReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfAccessExpression::class.java), XfMemberReferenceProvider())
         registrar.registerReferenceProvider(psiElement(XfNamedCall::class.java), XfCallableReferenceProvider())
@@ -117,6 +119,10 @@ class XfNameReference(host: XfReferenceHost, val slot: XfNameSlot) :
         val project = element.project
         if (DumbService.isDumb(project)) return ResolveResult.EMPTY_ARRAY
         val name = slot.name(element)
+        if (slot.kind == XfNameKind.HANDLER) return PsiElementResolveResult.createResults(XfJsHandlers.targets(project, slot.keyPrefix + name))
+        if (XfNameSlots.isCurrentTemplate(element, slot)) {
+            XfLocalMacros.definitions(element.containingFile)[name]?.let { return PsiElementResolveResult.createResults(it) }
+        }
         for (key in slot.keys(element)) {
             val targets = XfSymbols.targets(project, key, name)
             if (targets.isNotEmpty()) return PsiElementResolveResult.createResults(targets)

@@ -50,7 +50,7 @@ object XfCallables {
         isBuiltin(kind, name) || registration(project, kind, name) != null
 
     fun parameters(project: Project, kind: XfCallableKind, name: String): List<String>? {
-        builtins(kind)[name.lowercase()]?.let { return splitParameters(it) }
+        builtins(kind)[name.lowercase()]?.let { signature -> return splitParameters(signature).map { if (it.startsWith("$")) it else "$$it" } }
         val location = registration(project, kind, name) ?: return null
         val function = customFunction(project, location) ?: return null
         return function.parameters.drop(kind.skippedParameters).map(XfPhpMembers::parameterText)
@@ -79,7 +79,6 @@ object XfCallables {
         val returnType = returnTag?.substringBefore(' ')?.let(XfPhpMembers::presentableTypeText) ?: XfPhpMembers.presentable(function.declaredType)
         val returns = returnTag?.substringAfter(' ', "")?.trim()?.ifEmpty { null }
         val description = comment?.let { description(it.text) }
-        if (description == null && parameters.none { it.second != null } && returnTag == null) return null
         return XfCallableDoc(description, parameters, returnType, returns)
     }
 

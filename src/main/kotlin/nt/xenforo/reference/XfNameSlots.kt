@@ -1,6 +1,11 @@
 package nt.xenforo.reference
 
 import com.intellij.openapi.util.TextRange
+import com.intellij.psi.PsiFile
+import com.intellij.psi.util.PsiTreeUtil
+import nt.xenforo.lang.XfLanguage
+import nt.xenforo.psi.XfTagElement
+import nt.xenforo.index.XfJsHandlers
 import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.lang.XfTemplateFiles
 import nt.xenforo.psi.XfArguments
@@ -11,7 +16,7 @@ import nt.xenforo.psi.XfReferenceHost
 import nt.xenforo.psi.XfStringExpr
 import nt.xenforo.psi.XfTypes
 
-enum class XfNameKind { TEMPLATE, MACRO, PHRASE, ROUTE, PROPERTY }
+enum class XfNameKind { TEMPLATE, MACRO, PHRASE, ROUTE, PROPERTY, HANDLER }
 
 data class XfNameSlot(
     val kind: XfNameKind,
@@ -31,6 +36,7 @@ data class XfNameSlot(
 
 private val ROUTE_MODIFIER = Regex("""^[a-z_]+:""")
 private val INCLUDE_TAGS = setOf("include", "wrap", "extends")
+private val HANDLER_NAME = Regex("""[A-Za-z][\w-]*""")
 
 object XfPhraseNames {
     private const val ELLIPSIS = "..."
@@ -52,6 +58,30 @@ object XfPhraseNames {
     fun effective(name: String): String = name.substring(effectiveRange(name))
 }
 
+object XfLocalMacros {
+    private const val MACRO_TAG = "macro"
+    private const val ARGUMENT_PREFIX = "arg-"
+
+    fun definitions(file: PsiFile): Map<String, XfTagElement> {
+        val base = file.viewProvider.getPsi(XfLanguage) ?: return emptyMap()
+        val result = LinkedHashMap<String, XfTagElement>()
+        for (tag in PsiTreeUtil.findChildrenOfType(base, XfTagElement::class.java)) {
+            if (!tag.tagName.equals(MACRO_TAG, ignoreCase = true) || !tag.isBlock) continue
+            val header = tag.header ?: continue
+            val name = (header.findAttribute("id") ?: header.findAttribute("name"))?.attributeValue?.value ?: continue
+            if (name.isEmpty() || name.contains("::")) continue
+            result.putIfAbsent(name, tag)
+        }
+        return result
+    }
+
+    fun arguments(tag: XfTagElement): String =
+        tag.header?.getAttributeList().orEmpty()
+            .map { it.attributeName }
+            .filter { it.startsWith(ARGUMENT_PREFIX) }
+            .joinToString(", ") { it.removePrefix(ARGUMENT_PREFIX) }
+}
+
 object XfNameSlots {
     fun of(host: XfReferenceHost): List<XfNameSlot> = when (host) {
         is XfStringExpr -> stringSlots(host)
@@ -67,6 +97,7 @@ object XfNameSlots {
         val range = host.valueRange
         val value = host.value
         val type = currentType(host)
+        XfJsHandlers.prefixFor(name)?.let { return handlerSlots(value, range.startOffset, it) }
         return when {
             tag in INCLUDE_TAGS && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type))
             tag == "macro" && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type))
@@ -117,6 +148,11 @@ object XfNameSlots {
         return slots
     }
 
+    fun handlerSlots(value: String, start: Int, keyPrefix: String): List<XfNameSlot> {
+        if (value.contains('{') || value.contains('$')) return emptyList()
+        return HANDLER_NAME.findAll(value).map { XfNameSlot(XfNameKind.HANDLER, TextRange(start + it.range.first, start + it.range.last + 1), keyPrefix) }.toList()
+    }
+
     private fun splitType(value: String, defaultType: String): Pair<String, Int> {
         val colon = value.indexOf(':')
         if (colon > 0 && value.substring(0, colon) in XfTemplateFiles.TEMPLATE_TYPES && !value.startsWith("::", colon)) {
@@ -160,6 +196,9 @@ object XfNameSlots {
         val modifier = ROUTE_MODIFIER.find(value)?.value?.length ?: 0
         return XfNameSlot(XfNameKind.ROUTE, TextRange(start + modifier, start + value.length), XfSymbolKeys.routePrefix(type))
     }
+
+    fun isCurrentTemplate(host: XfReferenceHost, slot: XfNameSlot): Boolean =
+        slot.kind == XfNameKind.MACRO && slot.keyPrefix == XfSymbolKeys.macroPrefix(currentType(host), currentTitle(host))
 
     private fun currentType(host: XfReferenceHost): String =
         (host.containingFile.originalFile as? XfFile ?: host.containingFile as? XfFile)?.templateType ?: XfTemplateFiles.DEFAULT_TYPE

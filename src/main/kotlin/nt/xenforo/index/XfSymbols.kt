@@ -111,7 +111,7 @@ class XfSymbolTarget(
 
     override fun getLocationString(): String = file.parent?.parent?.name?.let { "$it/${file.name}" } ?: file.name
 
-    override fun getIcon(open: Boolean): Icon = AllIcons.FileTypes.Xml
+    override fun getIcon(open: Boolean): Icon = file.fileType.icon ?: AllIcons.FileTypes.Xml
 
     override fun getTextOffset(): Int = offset
 

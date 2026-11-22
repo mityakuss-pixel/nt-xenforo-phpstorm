@@ -8,7 +8,7 @@
 open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p>
 <ul>
   <li>Highlighting of <code>&lt;xf:…&gt;</code> tags, <code>{{ … }}</code> expressions and <code>{$…}</code> variables,
-      with HTML, CSS, LESS and JavaScript inside working as usual</li>
+      with HTML, CSS, LESS and JavaScript inside working as usual, and <code>&lt;xf:js&gt;</code> and <code>&lt;xf:css&gt;</code> bodies treated as script and style</li>
   <li>No false errors on template constructs: <code>{{ link(…) }}</code> in attributes, tags inside markup,
       <code>&lt;xf:else /&gt;</code> branches that open different HTML, template tags inside styles</li>
   <li>LESS templates see what <code>XF\CssRenderer</code> adds: <code>setup.less</code>, <code>&lt;prefix&gt;_prepend.less</code>,
@@ -19,11 +19,15 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
   <li>Template functions, filters and tests registered by add-ons in PHP</li>
   <li>Completion and Ctrl+Click for templates, macros, phrases, routes, options and style properties from <code>_output</code> and <code>_data</code>,
       and for PHP fields, methods and template function implementations</li>
+  <li>Ctrl+Click from <code>&lt;xf:js src&gt;</code> to JavaScript files and from <code>data-xf-init</code> and <code>data-xf-click</code> to handlers
+      registered with <code>XF.Element.register</code> and <code>XF.Event.register</code></li>
   <li>Quick documentation, parameter info and phrase text hints after <code>phrase()</code></li>
   <li>Structure view with <code>&lt;xf:…&gt;</code> tags and macros</li>
   <li>Errors the template compiler would report: unclosed and mismatched tags, misplaced <code>&lt;xf:else /&gt;</code>,
       unknown tags, unfinished expressions</li>
   <li>Auto-closing of <code>{{ }}</code> and block tags, folding and <code>&lt;xf:comment&gt;</code> commenting</li>
+  <li>Add-on commands in the context menu: build a release, bump the version, export and import development output,
+      export <code>_data</code>, sync <code>addon.json</code> or run any <code>cmd.php</code> command with the PHP interpreter chosen for the project</li>
 </ul>
     ]]></description>
 
@@ -55,6 +59,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <fileBasedIndex implementation="nt.xenforo.index.XfSymbolIndex"/>
         <fileBasedIndex implementation="nt.xenforo.index.XfTemplaterIndex"/>
         <psi.referenceContributor language="XenForoTemplate" implementation="nt.xenforo.reference.XfReferenceContributor"/>
+        <psi.referenceContributor language="XML" implementation="nt.xenforo.reference.XfHtmlHandlerReferenceContributor"/>
         <gotoDeclarationHandler implementation="nt.xenforo.reference.XfTagGotoDeclarationHandler"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAttributeValue" implementationClass="nt.xenforo.reference.XfAttributeValueManipulator"/>
         <lang.elementManipulator forClass="nt.xenforo.psi.XfStringExpr" implementationClass="nt.xenforo.reference.XfStringExprManipulator"/>
@@ -81,5 +86,26 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <codeStyleSettingsProvider implementation="nt.xenforo.format.XfCodeStyleSettingsProvider"/>
         <langCodeStyleSettingsProvider implementation="nt.xenforo.format.XfLanguageCodeStyleSettingsProvider"/>
         <fileIndentOptionsProvider implementation="nt.xenforo.format.XfFileIndentOptionsProvider"/>
+        <projectConfigurable parentId="reference.webide.settings.project.settings.php" instance="nt.xenforo.commands.XfCommandConfigurable"
+                             id="nt.xenforo.commands" bundle="messages.XfBundle" key="settings.commands.title" nonDefaultProject="true"/>
+        <notificationGroup id="nt.xenforo.commands" displayType="BALLOON" bundle="messages.XfBundle" key="notification.group.commands"/>
     </extensions>
+
+    <actions>
+        <group id="nt.xenforo.AddOn" class="nt.xenforo.commands.XfAddOnActionGroup" popup="true">
+            <action id="nt.xenforo.BuildRelease" class="nt.xenforo.commands.XfBuildReleaseAction"/>
+            <action id="nt.xenforo.BumpVersion" class="nt.xenforo.commands.XfBumpVersionAction"/>
+            <separator/>
+            <action id="nt.xenforo.ExportOutput" class="nt.xenforo.commands.XfExportOutputAction"/>
+            <action id="nt.xenforo.ImportOutput" class="nt.xenforo.commands.XfImportOutputAction"/>
+            <action id="nt.xenforo.ExportData" class="nt.xenforo.commands.XfExportDataAction"/>
+            <action id="nt.xenforo.SyncJson" class="nt.xenforo.commands.XfSyncJsonAction"/>
+            <separator/>
+            <action id="nt.xenforo.RunCommand" class="nt.xenforo.commands.XfRunCommandAction"/>
+            <action id="nt.xenforo.CommandSettings" class="nt.xenforo.commands.XfCommandSettingsAction"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="ProjectViewPopupMenuRunGroup"/>
+            <add-to-group group-id="EditorTabPopupMenu" anchor="last"/>
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </group>
+    </actions>
 </idea-plugin>

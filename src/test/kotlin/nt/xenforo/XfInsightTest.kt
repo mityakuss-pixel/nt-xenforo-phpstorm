@@ -10,6 +10,7 @@ import com.intellij.codeInsight.hints.declarative.InlayTreeSink
 import com.intellij.codeInsight.hints.declarative.InlineInlayPosition
 import com.intellij.codeInsight.hints.declarative.PresentationTreeBuilder
 import com.intellij.codeInsight.hints.declarative.SharedBypassCollector
+import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.SyntaxTraverser
 import com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoContext
 import com.intellij.testFramework.utils.parameterInfo.MockUpdateParameterInfoContext
@@ -24,7 +25,7 @@ class XfInsightTest : XfTestCase() {
     fun testParameterInfoForBuiltinFunction() {
         configureTemplate("{{ phrase('demo', <caret>) }}")
         val (signature, current) = parameterInfo()
-        assertEquals(listOf("name", "params = []"), signature.parameters)
+        assertEquals(listOf("\$name", "\$params = []"), signature.parameters)
         assertEquals(1, current)
     }
 
@@ -41,12 +42,28 @@ class XfInsightTest : XfTestCase() {
         myFixture.addFileToProject("src/addons/Demo/Test/Listener.php", LISTENER)
         configureTemplate("{{ demo_to<caret>tal(\$items) }}")
         val html = documentation()
-        assertTrue(html, html.contains("demo_total</b>(array \$items, float|int \$rate = 1, array \$options = [])"))
-        assertTrue(html, html.contains("Sums item prices."))
-        assertTrue(html, html.contains("<code>array \$items</code> Items with a price key"))
-        assertFalse(html, html.contains("\$escape"))
-        assertTrue(html, html.contains("<code>Phrase</code> Formatted total"))
+        val text = text(html)
+        assertTrue(text, text.contains("demo_total(\n    array \$items,\n    float|int \$rate = 1,\n    array \$options = []\n): Phrase"))
+        assertTrue(text, text.contains("Sums item prices."))
+        assertTrue(text, text.contains("array \$items Items with a price key"))
+        assertFalse(text, text.contains("\$escape"))
+        assertTrue(text, text.contains("Phrase Formatted total"))
         assertTrue(html, html.contains("Demo/Test"))
+    }
+
+    fun testParametersAreListedWithoutPhpDoc() {
+        myFixture.addFileToProject("src/addons/Demo/Test/Listener.php", LISTENER)
+        configureTemplate("{{ demo_ba<caret>dge(\$user) }}")
+        val html = documentation()
+        val text = text(html)
+        assertTrue(text, text.contains("demo_badge(\n    \$user,\n    \$size = 's'\n)"))
+        assertTrue(text, text.contains("\$user\n\$size"))
+    }
+
+    fun testBuiltinParametersAreListed() {
+        configureTemplate("{{ ph<caret>rase('x') }}")
+        val html = documentation()
+        assertTrue(html, text(html).contains("\$name\n\$params"))
     }
 
     fun testPhraseDocumentationShowsText() {
@@ -65,7 +82,7 @@ class XfInsightTest : XfTestCase() {
 
     fun testFunctionDocumentationShowsSignature() {
         configureTemplate("{{ ph<caret>rase('x') }}")
-        assertTrue(documentation().contains("(name, params = [])"))
+        assertTrue(text(documentation()).contains("phrase(\n    \$name,\n    \$params = []\n)"))
     }
 
     fun testOptionDocumentationShowsTitle() {
@@ -94,6 +111,9 @@ class XfInsightTest : XfTestCase() {
         configureTemplate("{{ phrase('missing_phrase') }}")
         assertEmpty(inlays())
     }
+
+    private fun text(html: String): String =
+        StringUtil.unescapeXmlEntities(html.replace("<br>", "\n").replace(Regex("<[^>]+>"), ""))
 
     private fun parameterInfo(): Pair<XfSignature, Int> {
         val handler = XfParameterInfoHandler()

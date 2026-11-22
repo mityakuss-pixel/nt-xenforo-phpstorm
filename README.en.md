@@ -4,7 +4,7 @@
 
 # XenForo Templates
 
-A PhpStorm plugin that understands XenForo 2 templates: HTML, LESS and CSS. It highlights `<xf:…>`, `{{ … }}` and `{$…}`, completes tags, functions, phrases and `$xf` fields, opens templates, macros and PHP code on Ctrl+Click, formats with proper indentation and finds the errors that would stop a template from compiling.
+A PhpStorm plugin that understands XenForo 2 templates: HTML, LESS and CSS. It highlights `<xf:…>`, `{{ … }}` and `{$…}`, completes tags, functions, phrases and `$xf` fields, opens templates, macros, PHP code and JavaScript on Ctrl+Click, formats with proper indentation and finds the errors that would stop a template from compiling. The context menu builds add-on releases and runs other `cmd.php` commands.
 
 [![PhpStorm](https://img.shields.io/badge/PhpStorm-2026.2%2B-7c3aed?style=flat-square)](https://www.jetbrains.com/phpstorm/)
 [![XenForo](https://img.shields.io/badge/XenForo-2.x-7c3aed?style=flat-square)](https://xenforo.com)
@@ -28,7 +28,7 @@ Without the plugin, PhpStorm treats a template as plain HTML. It reports `{{ lin
 
 ### Syntax without false errors
 
-`<xf:…>` tags, `{{ … }}` expressions and `{$…}` variables are highlighted on top of HTML, while HTML, CSS and JavaScript inside the template keep working as usual. `{{ link(…) }}` in attributes, `<xf:if>` inside markup and `<xf:else />` branches that open different HTML produce no errors. The plugin is checked against all 1,198 templates of XenForo 2.3: 1,082 HTML and 116 LESS and CSS.
+`<xf:…>` tags, `{{ … }}` expressions and `{$…}` variables are highlighted on top of HTML, while HTML, CSS and JavaScript inside the template keep working as usual. Code inside `<xf:js>…</xf:js>` is parsed as JavaScript in `<script>`, and inside `<xf:css>…</xf:css>` as LESS in `<style>`. `{{ link(…) }}` in attributes, `<xf:if>` inside markup and `<xf:else />` branches that open different HTML produce no errors. The plugin is checked against all 1,198 templates of XenForo 2.3: 1,082 HTML and 116 LESS and CSS.
 
 ### Completion
 
@@ -48,6 +48,8 @@ The plugin knows templates, macros, phrases, routes and style properties from th
 | `<xf:include template="…">`, `<xf:wrap>`, `<xf:extends>` | template |
 | `<xf:macro id="template::macro">` | template and the macro in it |
 | `<xf:css src="….less">` | style template |
+| `<xf:js src="…">`, `dev="…"`, `prod="…"` | file in `js/`; with `addon="…"` the add-on's `_files/js` is checked first, the same way XenForo looks it up |
+| `data-xf-init="tooltip"`, `data-xf-click="overlay"` | JavaScript handler registered with `XF.Element.register` or `XF.Event.register` |
 | `phrase('…')` | phrase, with its text shown in the completion list |
 | `link('…')`, `link_type('…', '…')` | route |
 | `property('…')` | style property |
@@ -56,13 +58,13 @@ The plugin knows templates, macros, phrases, routes and style properties from th
 | `$xf.options.boardTitle` | option in `options.xml` or `_output/options` |
 | `phrase(…)`, `\|escape`, `demo_badge(…)` | `Templater` method or the add-on code that registers the function |
 
-Phrase name modifiers such as `phrase('user_name:')`, `(…)`, `...` and `,` are stripped the same way `XF\Language` does, so the phrase itself opens. Renaming a template file updates the `template="…"` references to it.
+Phrase name modifiers such as `phrase('user_name:')`, `(…)`, `...` and `,` are stripped the same way `XF\Language` does, so the phrase itself opens. Renaming a template file updates the `template="…"` references to it. Macros of the current template are found right away, even before the file is saved.
 
 The **Structure** tool window shows `<xf:…>` tags as a tree, macros as `xf:macro#name` and the main attribute next to other tags, followed by the usual HTML or LESS structure.
 
 ### Documentation and parameters
 
-- <kbd>Ctrl</kbd>+<kbd>Q</kbd> or hovering shows the phrase text, the option title and explanation, tag attributes, function parameters and the add-on that registered a function. Function and parameter descriptions come from the PHPDoc of the implementing method. For `$xf` fields and methods, the PHP documentation opens.
+- <kbd>Ctrl</kbd>+<kbd>Q</kbd> or hovering shows the phrase text, the option title and explanation, tag attributes, function parameters and the add-on that registered a function. The function signature looks like the PHP documentation: highlighted, with the type and name of every parameter. Function and parameter descriptions come from the PHPDoc of the implementing method; without PHPDoc the parameters are still listed with their declared types. For `$xf` fields and methods, the PHP documentation opens; for `data-xf-init` and `data-xf-click`, the handler class and the file that declares it.
 - <kbd>Ctrl</kbd>+<kbd>P</kbd> inside parentheses shows the parameters of a function, filter or method and highlights the current one.
 - The phrase text is shown in gray after `{{ phrase('…') }}`, so you don't have to look it up.
 
@@ -71,6 +73,24 @@ The **Structure** tool window shows `<xf:…>` tags as a tree, macros as `xf:mac
 `.less` and `.css` templates from `_output/templates` open as XenForo templates on top of LESS and CSS: `<xf:if>`, `<xf:foreach>` and `{$…}` inside styles don't break parsing.
 
 Every stylesheet gets what `XF\CssRenderer` adds to it: `public:setup.less` with its nested templates, `<prefix>_prepend.less` and everything included with `{{ include('…') }}`, `<xf:include>` and `@import`. Variables and mixins from them, `@xf-…` and `.xf-…()` from style properties and `@fa-var-…` are not reported as undeclared. Typos in other LESS names are still highlighted. Ctrl+Click on a variable or mixin opens its declaration: a mixin parameter, the file itself, an included template, `setup.less` or a style property.
+
+### Add-on commands
+
+Right-click an add-on folder or any file inside it to open the **XenForo: Vendor/AddOn** menu. The same menu is in the editor tab menu and under **Tools**.
+
+| Item | Command |
+|---|---|
+| Build Release | `xf-addon:build-release`, the ZIP goes to `_releases` |
+| Bump Version… | `xf-addon:bump-version`, `version_id` is calculated from the version string |
+| Export Development Output | `xf-dev:export --addon=…`, from the database to `_output` |
+| Import Development Output | `xf-dev:import --addon=…`, from `_output` to the database |
+| Export _data XML | `xf-addon:export`, XML files to `_data` |
+| Sync addon.json to Database | `xf-addon:sync-json` |
+| Run cmd.php Command… | any `cmd.php` command, the last one is remembered |
+
+PhpStorm saves open files before a command starts. The output goes to the **Run** tool window, where the command can be stopped or run again. After a build, a notification links to the ZIP, and files changed by a command show up in the project right away.
+
+Commands run with the project PHP interpreter from **Settings → PHP**. If the forum needs a different PHP version, pick it in **Settings → PHP → XenForo**: for example `php82` in a XenForo 2.2 project and plain `php` in a 2.3 one. Remote interpreters work too: Docker, WSL, SSH. When no interpreter is set anywhere, `php` from `PATH` is used. The same page takes the forum folder with `cmd.php` for add-ons kept outside the forum, for example linked with a symlink.
 
 ### Formatting
 
@@ -141,12 +161,14 @@ On macOS, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.
 | Colors | Settings → Editor → Color Scheme → XenForo Template |
 | Unknown tag check | Settings → Editor → Inspections → XenForo |
 | Phrase text after `phrase()` | Settings → Editor → Inlay Hints, **Phrase text** |
+| PHP and forum folder for `cmd.php` commands | Settings → PHP → XenForo |
 
 ## Limitations
 
 - Templates edited in the admin control panel rather than as files are not visible to the plugin.
 - Columns that an add-on adds to a core entity through a class extension are not completed: the plugin reads `@property` docblocks of the entity class itself only.
 - Names taken from variables, such as `{{ phrase($name) }}`, are not checked or completed.
+- Add-on commands need a working forum database, and `xf-dev:export` and `xf-dev:import` only work with development mode enabled in `config.php`.
 
 ## Building from source
 

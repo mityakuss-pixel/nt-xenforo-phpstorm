@@ -16,6 +16,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.psi.util.elementType
 import nt.xenforo.XfBundle
 import nt.xenforo.index.XfCallableKind
+import nt.xenforo.index.XfJsHandlers
 import nt.xenforo.index.XfOptionDetail
 import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.index.XfSymbolLocation
@@ -38,6 +39,7 @@ import nt.xenforo.psi.XfReferenceHost
 import nt.xenforo.psi.XfTagHeader
 import nt.xenforo.psi.XfTestExpr
 import nt.xenforo.psi.XfTypes
+import nt.xenforo.reference.XfHtmlHandlerReference
 import nt.xenforo.reference.XfNameKind
 import nt.xenforo.reference.XfNameSlot
 import nt.xenforo.reference.XfNameSlots
@@ -49,6 +51,7 @@ private const val OPTION_EXPLAIN_PREFIX = "option_explain."
 class XfDocumentationTargetProvider : DocumentationTargetProvider {
     override fun documentationTargets(file: PsiFile, offset: Int): List<DocumentationTarget> {
         if (file.viewProvider !is XfFileViewProvider) return emptyList()
+        XfHtmlHandlerReference.at(file, offset)?.let { return listOf(XfDocumentation.handler(file.project, it.key, it.value)) }
         for (candidate in listOf(offset, offset - 1)) {
             if (candidate < 0) continue
             val element = file.viewProvider.findElementAt(candidate, XfLanguage) ?: continue
@@ -113,7 +116,7 @@ object XfDocumentation {
             definition?.registration?.let { add(definedIn(listOf(it))) }
         }
         val kind = message(if (info.block) "doc.kind.tag.block" else "doc.kind.tag.single")
-        return XfDocumentationTarget("xf:${info.name}", XfIcons.TAG, plain(code), kind, sections)
+        return XfDocumentationTarget("xf:${info.name}", XfIcons.TAG, XfSignatureHtml.code(project, code), kind, sections)
     }
 
     private fun identifier(element: PsiElement): XfDocumentationTarget? {
@@ -129,29 +132,37 @@ object XfDocumentation {
 
     private fun callable(project: Project, kind: XfCallableKind, name: String): XfDocumentationTarget? {
         if (!XfCallables.isKnown(project, kind, name)) return null
-        val parameters = XfCallables.parameters(project, kind, name).orEmpty()
+        val doc = XfCallables.documentation(project, kind, name)
+        val parameters = doc?.parameters?.map { it.first } ?: XfCallables.parameters(project, kind, name).orEmpty()
         val (prefix, icon, kindKey) = when (kind) {
             XfCallableKind.FUNCTION -> Triple("", AllIcons.Nodes.Function, "doc.kind.function")
             XfCallableKind.FILTER -> Triple("value|", AllIcons.Nodes.Method, "doc.kind.filter")
             XfCallableKind.TEST -> Triple("value is ", AllIcons.Nodes.Method, "doc.kind.test")
         }
-        val signature = if (kind == XfCallableKind.FUNCTION || parameters.isNotEmpty()) "(${parameters.joinToString(", ")})" else ""
+        val shownParameters = parameters.takeIf { kind == XfCallableKind.FUNCTION || it.isNotEmpty() }
+        val definition = XfSignatureHtml.callable(prefix, name, shownParameters, null, doc?.returnType)
         val registration = XfCallables.registration(project, kind, name)
         val origin = if (registration == null) message(kindKey) else XfBundle.message("$kindKey.custom", registration.addOnId ?: registration.relativePath)
-        val doc = XfCallables.documentation(project, kind, name)
         val content = listOfNotNull(doc?.description?.let(::multiline), escape(origin)).joinToString("<p>")
         val sections = buildList {
-            doc?.parameters?.takeIf { parameters -> parameters.any { it.second != null } }?.let { parameters ->
-                add(message("doc.section.parameters") to parameters.joinToString("<br>") { (parameter, text) ->
-                    sectionCode(parameter) + text?.let { " " + escape(it) }.orEmpty()
-                })
+            val documented = doc?.parameters ?: parameters.map { it to null }
+            if (documented.isNotEmpty()) {
+                add(message("doc.section.parameters") to documented.joinToString("<br>") { (parameter, text) -> parameterLine(parameter, text) })
             }
             if (doc?.returnType != null || doc?.returns != null) {
-                add(message("doc.section.returns") to listOfNotNull(doc.returnType?.let(::sectionCode), doc.returns?.let(::escape)).joinToString(" "))
+                val type = doc.returnType?.let { "<code>${XfSignatureHtml.type(it)}</code>" }
+                add(message("doc.section.returns") to listOfNotNull(type, doc.returns?.let(::escape)).joinToString(" "))
             }
             registration?.let { add(definedIn(listOf(it))) }
         }
-        return XfDocumentationTarget(name, icon, plain(prefix) + bold(name) + plain(signature), content, sections)
+        return XfDocumentationTarget(name, icon, definition, content, sections)
+    }
+
+    private fun parameterLine(parameter: String, description: String?): String {
+        val parts = XfSignatureHtml.parse(parameter)
+        val type = parts.type?.let { "<code>${XfSignatureHtml.type(it)}</code> " }.orEmpty()
+        val name = "<code>${XfSignatureHtml.parameter(XfParameterParts(null, parts.prefix, parts.name, null), withDefault = false)}</code>"
+        return type + name + description?.let { " " + escape(it) }.orEmpty()
     }
 
     private fun variable(element: PsiElement): XfDocumentationTarget? {
@@ -231,11 +242,19 @@ object XfDocumentation {
                 val sections = listOfNotNull(controller?.let { message("doc.section.controller") to sectionCode(it) }, definedIn(project, key))
                 XfDocumentationTarget(route, AllIcons.Nodes.Related, bold(route), message("doc.kind.route"), sections)
             }
+            XfNameKind.HANDLER -> handler(project, key, name)
             XfNameKind.PROPERTY -> {
                 val title = XfSymbols.detail(project, key)?.takeIf { it.isNotEmpty() }?.let(::escape)
                 XfDocumentationTarget(name, AllIcons.Nodes.Property, plain("property ") + bold(name), title ?: message("doc.kind.property"), listOfNotNull(definedIn(project, key)))
             }
         }
+    }
+
+    fun handler(project: Project, key: String, name: String): XfDocumentationTarget {
+        val className = XfJsHandlers.className(project, key).orEmpty()
+        val location = XfJsHandlers.classLocation(project, className) ?: XfJsHandlers.registration(project, key)
+        val sections = listOfNotNull(location?.let { definedIn(listOf(it)) })
+        return XfDocumentationTarget(name, AllIcons.Nodes.Class, plain("$name: ") + bold(className), message("doc.kind.handler"), sections)
     }
 
     private fun macro(project: Project, slot: XfNameSlot, key: String, name: String): XfDocumentationTarget {
