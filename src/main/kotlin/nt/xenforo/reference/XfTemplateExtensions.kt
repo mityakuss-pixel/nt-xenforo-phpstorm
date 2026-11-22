@@ -10,6 +10,7 @@ import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 import com.jetbrains.php.PhpIndex
+import nt.xenforo.XfBundle
 import nt.xenforo.index.XfSymbolTarget
 import nt.xenforo.lang.XfTemplateFiles
 import nt.xenforo.modification.XfModifications
@@ -21,6 +22,7 @@ import nt.xenforo.psi.XfTagElement
 import nt.xenforo.psi.XfTypes
 
 private const val EXTENSION_TAG = "extension"
+private const val EXTENSION_TYPE = "symbol.type.extension.template"
 private const val PARENT_DEPTH = 5
 private val EXTENSION_DEFINITION = Regex("""<xf:extension\b[^>]*?\bid="([\w-]+)"""")
 private val EXTENDS = Regex("""<xf:extends\b[^>]*?\btemplate="([^"{$]+)"""")
@@ -33,11 +35,11 @@ object XfTemplateExtensions {
         val tag = PsiTreeUtil.getParentOfType(host, XfTagElement::class.java)
         val text = file.viewProvider.contents
         if (tag?.tagName?.equals(EXTENSION_TAG, ignoreCase = true) != true) {
-            definition(text, name, tag?.textRange?.startOffset)?.let { return listOf(XfSymbolTarget(project, virtualFile, it, name)) }
+            definition(text, name, tag?.textRange?.startOffset)?.let { return listOf(XfSymbolTarget(project, virtualFile, it, name, XfBundle.message(EXTENSION_TYPE))) }
         }
         if (DumbService.isDumb(project)) return emptyList()
         for ((parentFile, range) in parents(file, text)) {
-            definition(XfModifications.text(parentFile), name, null, range)?.let { return listOf(XfSymbolTarget(project, parentFile, it, name)) }
+            definition(XfModifications.text(parentFile), name, null, range)?.let { return listOf(XfSymbolTarget(project, parentFile, it, name, XfBundle.message(EXTENSION_TYPE))) }
         }
         return emptyList()
     }

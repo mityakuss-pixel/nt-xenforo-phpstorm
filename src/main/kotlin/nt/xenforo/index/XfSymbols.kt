@@ -6,9 +6,13 @@ import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.fileEditor.impl.LoadTextUtil
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.ElementDescriptionLocation
+import com.intellij.psi.ElementDescriptionProvider
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiManager
 import com.intellij.psi.impl.FakePsiElement
+import com.intellij.usageView.UsageViewTypeLocation
+import nt.xenforo.XfBundle
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.indexing.FileBasedIndex
@@ -20,6 +24,26 @@ private const val MACRO_KEY_PREFIX = "m:"
 private const val ADD_ONS_FOLDER = "addons"
 private const val ADD_ON_FILE = "addon.json"
 private const val FAR_COLUMN = 80
+private const val DEFAULT_TYPE = "symbol.type.default"
+private val TYPE_NAMES = linkedMapOf(
+    "tm:" to "symbol.type.modification",
+    "t:" to "symbol.type.template",
+    "m:" to "symbol.type.macro",
+    "pm:" to "symbol.type.permission",
+    "ap:" to "symbol.type.permission",
+    "p:" to "symbol.type.phrase",
+    "r:" to "symbol.type.route",
+    "s:" to "symbol.type.property",
+    "o:" to "symbol.type.option",
+    "a:" to "symbol.type.addon",
+    "x:" to "symbol.type.extension.class",
+    "v:" to "symbol.type.view",
+    "wp:" to "symbol.type.widget.position",
+    "ck:" to "symbol.type.container",
+    "je:" to "symbol.type.handler",
+    "jv:" to "symbol.type.handler",
+    "jc:" to "symbol.type.handler",
+)
 
 data class XfSymbolLocation(val file: VirtualFile, val symbol: XfSymbol) {
     val isOutput: Boolean
@@ -81,12 +105,17 @@ object XfSymbols {
 
     fun targets(project: Project, key: String, name: String): List<PsiElement> {
         val inFile = key.startsWith(MACRO_KEY_PREFIX)
-        return locations(project, key).mapNotNull { target(project, it, name, inFile) }
+        return locations(project, key).mapNotNull { target(project, it, name, inFile, key) }
     }
 
-    private fun target(project: Project, location: XfSymbolLocation, name: String, inFile: Boolean): PsiElement? {
+    fun typeName(key: String): String {
+        val bundleKey = TYPE_NAMES.entries.firstOrNull { key.startsWith(it.key) }?.value ?: DEFAULT_TYPE
+        return XfBundle.message(bundleKey)
+    }
+
+    private fun target(project: Project, location: XfSymbolLocation, name: String, inFile: Boolean, key: String): PsiElement? {
         if (!location.file.isValid) return null
-        if (!location.isOutput) return XfSymbolTarget(project, location.file, location.symbol.offset, name)
+        if (!location.isOutput) return XfSymbolTarget(project, location.file, location.symbol.offset, name, typeName(key))
         val psiFile = PsiManager.getInstance(project).findFile(location.file) ?: return null
         if (!inFile) return psiFile
         val element = psiFile.viewProvider.findElementAt(location.symbol.offset, XfLanguage) ?: return psiFile
@@ -94,11 +123,17 @@ object XfSymbols {
     }
 }
 
+class XfSymbolDescriptionProvider : ElementDescriptionProvider {
+    override fun getElementDescription(element: PsiElement, location: ElementDescriptionLocation): String? =
+        if (element is XfSymbolTarget && location is UsageViewTypeLocation) element.typeName else null
+}
+
 class XfSymbolTarget(
     private val project: Project,
     private val file: VirtualFile,
     private val offset: Int,
     private val symbolName: String,
+    val typeName: String = XfBundle.message(DEFAULT_TYPE),
 ) : FakePsiElement() {
     override fun getParent(): PsiElement? = file.parent?.let { PsiManager.getInstance(project).findDirectory(it) }
 

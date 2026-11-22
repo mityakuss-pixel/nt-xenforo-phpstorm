@@ -104,7 +104,7 @@ object XfModificationMarkers {
     }
 
     fun targets(project: Project, modifications: List<XfModification>): List<XfSymbolTarget> =
-        modifications.map { XfSymbolTarget(project, it.file, it.offset, it.key) }
+        modifications.map { XfSymbolTarget(project, it.file, it.offset, it.key, message("symbol.type.modification")) }
 
     fun isTemplatesXml(file: VirtualFile): Boolean = file.name == TEMPLATES_XML && file.parent?.name == DATA_FOLDER
 }

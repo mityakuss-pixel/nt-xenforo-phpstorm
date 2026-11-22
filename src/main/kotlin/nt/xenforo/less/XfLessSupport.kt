@@ -26,6 +26,7 @@ import nt.xenforo.index.XfSymbols
 import nt.xenforo.lang.XfFileViewProvider
 import nt.xenforo.lang.XfLanguage
 import nt.xenforo.lang.XfTemplateFiles
+import nt.xenforo.XfBundle
 import org.jetbrains.plugins.less.LESSElementTypes
 import org.jetbrains.plugins.less.psi.LESSMixin
 import org.jetbrains.plugins.less.psi.LESSMixinInvocation
@@ -44,7 +45,10 @@ private const val MIXIN_TOOL = "LessUnresolvedMixin"
 private const val BY_NAME_TOOL = "LessResolvedByNameOnly"
 private val TOOLS = setOf(VARIABLE_TOOL, MIXIN_TOOL, BY_NAME_TOOL)
 
-enum class XfLessKind(val mark: String) { VARIABLE(VARIABLE_MARK), MIXIN(MIXIN_MARK) }
+enum class XfLessKind(val mark: String, val typeKey: String) {
+    VARIABLE(VARIABLE_MARK, "symbol.type.less.variable"),
+    MIXIN(MIXIN_MARK, "symbol.type.less.mixin"),
+}
 
 data class XfLessSymbol(val kind: XfLessKind, val name: String, val element: PsiElement) {
     val key: String get() = kind.mark + name
@@ -133,7 +137,7 @@ object XfLessResolver {
             XfLessKind.MIXIN -> Regex("""(?m)^[ \t]*(\.${Regex.escape(symbol.name)})\s*(?:\((?:[^(){}]|\([^(){}]*\))*\))?\s*(?:when\b[^{;]*)?\{""")
         }
         return pattern.findAll(text.subSequence(start, end))
-            .map { XfSymbolTarget(project, file, start + it.groups[1]!!.range.first, symbol.key) }
+            .map { XfSymbolTarget(project, file, start + it.groups[1]!!.range.first, symbol.key, XfBundle.message(symbol.kind.typeKey)) }
             .toList()
     }
 

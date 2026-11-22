@@ -1,7 +1,9 @@
 package nt.xenforo
 
 import com.intellij.codeInsight.TargetElementUtil
+import com.intellij.psi.ElementDescriptionUtil
 import com.intellij.psi.PsiPolyVariantReference
+import com.intellij.usageView.UsageViewTypeLocation
 import nt.xenforo.documentation.XfDocumentationTarget
 import nt.xenforo.documentation.XfDocumentationTargetProvider
 import nt.xenforo.index.XfJsHandlers
@@ -22,6 +24,7 @@ class XfJsHandlerTest : XfTestCase() {
         val target = resolveAtCaret() as XfSymbolTarget
         assertEquals("XF.TooltipElement", target.name)
         assertEquals(HANDLERS.indexOf("XF.TooltipElement = "), target.textOffset)
+        assertEquals("XF JavaScript handler", ElementDescriptionUtil.getElementDescription(target, UsageViewTypeLocation.INSTANCE))
     }
 
     fun testSecondHandlerInInitAttribute() {
