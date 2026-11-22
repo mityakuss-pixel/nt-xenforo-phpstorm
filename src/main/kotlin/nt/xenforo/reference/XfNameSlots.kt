@@ -39,6 +39,8 @@ private val ROUTE_MODIFIER = Regex("""^[a-z_]+:""")
 private val INCLUDE_TAGS = setOf("include", "wrap", "extends")
 private val EXTENSION_TAGS = setOf("extension", "extensionparent", "extensionvalue")
 private const val NODE_PERMISSION_GROUP = "forum"
+private const val LESS_SUFFIX = ".less"
+private const val CSS_SUFFIX = ".css"
 private val HANDLER_NAME = Regex("""[A-Za-z][\w-]*""")
 
 object XfPhraseNames {
@@ -102,7 +104,7 @@ object XfNameSlots {
         val type = currentType(host)
         XfJsHandlers.prefixFor(name)?.let { return handlerSlots(value, range.startOffset, it) }
         return when {
-            tag in INCLUDE_TAGS && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type))
+            tag in INCLUDE_TAGS && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type, lessOnly = isStyleTemplate(host)))
             tag == "macro" && name == "template" -> listOfNotNull(templateSlot(value, range.startOffset, type))
             tag == "macro" && (name == "id" || name == "extends") -> macroSlots(value, range.startOffset, type, currentTitle(host))
             tag == "widgetpos" && name == "id" -> listOf(XfNameSlot(XfNameKind.WIDGET_POSITION, range, XfSymbolKeys.WIDGET_POSITION_PREFIX))
@@ -182,8 +184,8 @@ object XfNameSlots {
             }
             "property" to 0, "property_variation" to 0 ->
                 listOf(XfNameSlot(XfNameKind.PROPERTY, range, XfSymbolKeys.PROPERTY_PREFIX))
-            "include" to 0, "call_macro" to 0 ->
-                listOfNotNull(templateSlot(value, range.startOffset, type))
+            "include" to 0 -> listOfNotNull(templateSlot(value, range.startOffset, type, lessOnly = isStyleTemplate(host)))
+            "call_macro" to 0 -> listOfNotNull(templateSlot(value, range.startOffset, type))
             "call_macro" to 1 -> {
                 val template = (arguments.exprList.firstOrNull() as? XfStringExpr)?.value ?: return emptyList()
                 val (templateType, nameStart) = splitType(template, type)
@@ -225,4 +227,6 @@ object XfNameSlots {
 
     private fun currentTitle(host: XfReferenceHost): String =
         (host.containingFile.originalFile as? XfFile ?: host.containingFile as? XfFile)?.templateTitle.orEmpty()
+
+    private fun isStyleTemplate(host: XfReferenceHost): Boolean = currentTitle(host).let { it.endsWith(LESS_SUFFIX) || it.endsWith(CSS_SUFFIX) }
 }

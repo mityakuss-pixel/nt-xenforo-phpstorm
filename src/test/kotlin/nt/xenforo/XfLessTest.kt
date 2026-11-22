@@ -111,6 +111,37 @@ class XfLessTest : XfTestCase() {
         assertEquals("gap", (jump("@gap;").single() as LESSVariableDeclaration).name)
     }
 
+    fun testIncludeCompletesStyleTemplates() {
+        addOutputFile("templates/public/demo_mixins.less", ".m-demoCard()\n{\n\tpadding: 0;\n}\n")
+        addOutputFile("templates/public/demo_page.html", "<div></div>")
+        configureTemplate("{{ include('<caret>') }}\n.demo-block { color: red; }", name = "demo_completion.less")
+        val variants = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
+        assertContainsElements(variants, "demo_mixins.less")
+        assertDoesntContain(variants, "demo_page")
+    }
+
+    fun testJumpToMixinFromDoubleQuotedInclude() {
+        addOutputFile("templates/public/demo_mixins.less", ".m-demoCard()\n{\n\tpadding: 0;\n}\n")
+        configureTemplate("{{ include(\"demo_mixins.less\") }}\n.demo-block\n{\n\t.m-demoCard();\n}\n", name = "demo_quoted.less")
+        assertEquals("demo_mixins.less", jump(".m-demoCard").single().containingFile.name)
+    }
+
+    fun testJumpToClassUsedAsMixin() {
+        addOutputFile("templates/public/demo_mixins.less", ".demo-card\n{\n\tpadding: 0;\n}\n.demo-shell .demo-card\n{\n\tmargin: 0;\n}\n")
+        configureTemplate("{{ include('demo_mixins.less') }}\n.demo-block\n{\n\t.demo-card();\n}\n", name = "demo_class.less")
+        val targets = jump(".demo-card();")
+        assertEquals(1, targets.size)
+        assertEquals("demo_mixins.less", targets.single().containingFile.name)
+    }
+
+    fun testJumpAfterTypingInclude() {
+        addOutputFile("templates/public/demo_mixins.less", ".m-demoCard()\n{\n\tpadding: 0;\n}\n")
+        configureTemplate("<caret>\n.demo-block\n{\n\t.m-demoCard();\n}\n", name = "demo_typed.less")
+        myFixture.type("{{ include('demo_mixins.less') }}")
+        com.intellij.psi.PsiDocumentManager.getInstance(project).commitAllDocuments()
+        assertEquals("demo_mixins.less", jump(".m-demoCard").single().containingFile.name)
+    }
+
     private fun jump(text: String): List<PsiElement> {
         val offset = myFixture.file.text.lastIndexOf(text) + 2
         val source = myFixture.file.findElementAt(offset)

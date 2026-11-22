@@ -39,7 +39,7 @@ private val JSON_FIELD = Regex(""""(\w+)"\s*:\s*"((?:[^"\\]|\\.)*)"""")
 private val JSON_SUB_OPTIONS = Regex(""""sub_options"\s*:\s*\[(.*?)]""", RegexOption.DOT_MATCHES_ALL)
 private val JSON_STRING = Regex(""""((?:[^"\\]|\\.)*)"""")
 
-private val LESS_INCLUDE = Regex("""include\(\s*'([^']+)'\s*\)|<xf:include\s+template="([^"]+)"|@import\s+(?:\([^)]*\)\s*)?['"]([^'"]+)['"]""")
+private val LESS_INCLUDE = Regex("""include\(\s*'([^']+)'\s*\)|include\(\s*"([^"]+)"\s*\)|<xf:include\s+template="([^"]+)"|@import\s+(?:\([^)]*\)\s*)?['"]([^'"]+)['"]""")
 private val LESS_VARIABLE = Regex("""(?m)^[ \t]*@([\w-]+)\s*:""")
 private val LESS_MIXIN = Regex("""(?m)^[ \t]*\.([\w-]+)\s*(?:\((?:[^(){}]|\([^(){}]*\))*\))?\s*(?:when\b[^{;]*)?\{""")
 
