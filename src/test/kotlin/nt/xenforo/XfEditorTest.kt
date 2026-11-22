@@ -1,8 +1,10 @@
 package nt.xenforo
 
 import com.intellij.codeInsight.generation.actions.CommentByBlockCommentAction
+import com.intellij.codeInsight.editorActions.TypedHandlerDelegate
 import com.intellij.openapi.actionSystem.IdeActions
 import com.intellij.psi.search.PsiTodoSearchHelper
+import nt.xenforo.editor.XfTypedHandler
 
 class XfEditorTest : XfTestCase() {
     fun testExpressionBracesAreClosed() {
@@ -83,6 +85,20 @@ class XfEditorTest : XfTestCase() {
         val file = configureTemplate("<xf:comment>TODO check this</xf:comment>\n<div></div>\n<xf:comment>\n\tTODO second\n</xf:comment>")
         val todos = PsiTodoSearchHelper.getInstance(project).findTodoItems(file).map { it.textRange.substring(file.text) }.sorted()
         assertEquals(listOf("TODO check this", "TODO second"), todos)
+    }
+
+    fun testAutoPopupInExpressions() {
+        assertEquals(TypedHandlerDelegate.Result.STOP, autoPopup("{{ <caret> }}", '$'))
+        assertEquals(TypedHandlerDelegate.Result.STOP, autoPopup("{{ \$a ~ <caret> }}", '$'))
+        assertEquals(TypedHandlerDelegate.Result.STOP, autoPopup("{<caret>}", '$'))
+        assertEquals(TypedHandlerDelegate.Result.STOP, autoPopup("{{ \$xf<caret> }}", '.'))
+        assertEquals(TypedHandlerDelegate.Result.STOP, autoPopup("<xf:if is=\"<caret>\"></xf:if>", '$'))
+        assertEquals(TypedHandlerDelegate.Result.STOP, autoPopup("<xf:if is=\"\$a && <caret>\"></xf:if>", '$'))
+    }
+
+    private fun autoPopup(text: String, char: Char): TypedHandlerDelegate.Result {
+        configureTemplate(text, "popup${text.hashCode().toUInt()}.html")
+        return XfTypedHandler().checkAutoPopup(char, project, myFixture.editor, myFixture.file)
     }
 
     fun testEnterInsideCommentKeepsSingleClosingTag() {

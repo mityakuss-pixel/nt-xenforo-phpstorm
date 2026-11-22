@@ -41,6 +41,29 @@ class XfTemplateParamsTest : XfTestCase() {
         assertDoesntContain(variants, "adminOnly")
     }
 
+    fun testVariableCompletionInExpressions() {
+        configureTemplate("", "demo_view.html")
+        for (text in listOf("{\$th<caret>}", "{{ \$th<caret> }}", "{{ \$<caret> }}", "<xf:if is=\"\$th<caret>\"></xf:if>", "{{ \$count + \$th<caret> }}")) {
+            val caret = text.indexOf("<caret>")
+            com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) { myFixture.editor.document.setText(text.replace("<caret>", "")) }
+            com.intellij.psi.PsiDocumentManager.getInstance(project).commitAllDocuments()
+            myFixture.editor.caretModel.moveToOffset(caret)
+            val variants = myFixture.completeBasic()?.map { it.lookupString }
+            val inserted = if (variants == null) myFixture.editor.document.text else null
+            assertTrue("$text -> $variants / $inserted", variants?.contains("thread") == true || inserted?.contains("\$thread") == true)
+            assertFalse("$text -> $variants", variants.orEmpty().contains("th"))
+        }
+        com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) { myFixture.editor.document.setText("{{ \$thr }}") }
+        com.intellij.psi.PsiDocumentManager.getInstance(project).commitAllDocuments()
+        myFixture.editor.caretModel.moveToOffset(7)
+        val items = myFixture.completeBasic()
+        if (items != null) {
+            myFixture.lookup.currentItem = items.first { it.lookupString == "thread" }
+            myFixture.finishLookup('\n')
+        }
+        assertEquals("{{ \$thread }}", myFixture.editor.document.text)
+    }
+
     fun testMembersOfEntityParameter() {
         configureTemplate("{\$thread.<caret>}", "demo_view.html")
         val variants = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()

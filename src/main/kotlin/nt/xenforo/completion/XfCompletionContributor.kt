@@ -156,6 +156,7 @@ private class AttributeNameProvider : CompletionProvider<CompletionParameters>()
 }
 
 private const val MACRO_ARGUMENT_PRIORITY = 10.0
+private const val VARIABLE_MARK = "\$"
 
 object XfMacroArguments {
     private const val ID_ATTRIBUTE = "id"
@@ -295,24 +296,26 @@ const val OPTION_TITLE_PREFIX: String = "option."
 
 private class VariableProvider : CompletionProvider<CompletionParameters>(), DumbAware {
     override fun addCompletions(parameters: CompletionParameters, context: ProcessingContext, result: CompletionResultSet) {
+        val matcher = result.prefixMatcher.prefix
+        val variables = if (matcher.startsWith(VARIABLE_MARK)) result.withPrefixMatcher(matcher.removePrefix(VARIABLE_MARK)) else result
         val names = LinkedHashSet<String>()
         names += XfGlobals.VARIABLES
         val file = parameters.originalFile
         val params = if (DumbService.isDumb(file.project)) emptyMap() else XfTemplateParams.of(file)
         names += params.keys
-        collectVariableNames(file, names)
+        collectVariableNames(file, names, parameters.offset)
         for (name in names) {
             if (name.isEmpty()) continue
             val lookup = LookupElementBuilder.create(name).withIcon(AllIcons.Nodes.Variable).withPresentableText("$$name")
-            result.addElement(if (name in params) lookup.withTypeText(XfTemplateParams.presentableType(file, name), true).bold() else lookup)
+            variables.addElement(if (name in params) lookup.withTypeText(XfTemplateParams.presentableType(file, name), true).bold() else lookup)
         }
     }
 
-    private fun collectVariableNames(file: PsiFile, names: MutableSet<String>) {
+    private fun collectVariableNames(file: PsiFile, names: MutableSet<String>, caret: Int) {
         val base = file.viewProvider.getPsi(file.viewProvider.baseLanguage) ?: return
         PsiTreeUtil.processElements(base) { element ->
             if (element.elementType == XfTypes.VARIABLE) {
-                names += element.text.removePrefix("$")
+                if (!element.textRange.containsOffset(caret)) names += element.text.removePrefix(VARIABLE_MARK)
             } else if (element.elementType == XfTypes.ATTR_NAME && element.text.startsWith("arg-")) {
                 names += element.text.removePrefix("arg-")
             }
