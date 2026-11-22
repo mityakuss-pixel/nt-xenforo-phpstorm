@@ -34,7 +34,8 @@ Every name comes from the files of your forum: the `_output` folders of your add
 - **Variables from controllers.** The plugin finds `$this->view(…, 'template', $viewParams)` and knows the type of every parameter: `{$thread.` lists the fields of `XF\Entity\Thread`. An icon on the first line of the template opens the controller, and <kbd>Ctrl</kbd>+Click on a variable without `<xf:set>` opens its key in `view()`.
 - **Documentation.** <kbd>Ctrl</kbd>+<kbd>Q</kbd> shows the phrase text, the option description, tag attributes and function parameters. The phrase text is also shown in gray after `{{ phrase('…') }}`.
 - **Formatting.** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> indents with tabs, like XenForo's own templates. `<xf:else />` lines up with its `<xf:if>` as you type, and attributes are aligned according to the HTML code style.
-- **Compile errors.** Unclosed and mismatched tags, `<xf:else />` outside `<xf:if>`, unknown tags and unfinished expressions are underlined right away, before you open the forum.
+- **Compile errors.** Unclosed and mismatched tags, `<xf:else />` outside `<xf:if>`, unknown tags, unfinished expressions and `phrase($name)` with a name taken from a variable are underlined right away, before you open the forum. For `phrase($name)`, <kbd>Alt</kbd>+<kbd>Enter</kbd> replaces the call with `phrase_dynamic($name)`.
+- **Admin templates outside the control panel.** XenForo compiles admin templates only for the admin control panel, so `<xf:include template="admin:…">` in `public` and `email` templates is underlined.
 - **Typing assistance.** `{{` adds the closing ` }}`, `>` in `<xf:foreach …>` adds the closing tag, and <kbd>Ctrl</kbd>+<kbd>/</kbd> wraps the selection in `<xf:comment>`.
 
 <details>
@@ -83,9 +84,11 @@ Every stylesheet gets what `XF\CssRenderer` adds to it: `public:setup.less` with
 
 - **`XFCP_…` classes are no longer red.** The plugin takes extensions from `_output/class_extensions`, `_data/class_extensions.xml` and the classes themselves and tells PhpStorm which class each of them extends. Parent method completion, `parent::` and <kbd>Ctrl</kbd>+<kbd>O</kbd> work. The stub with these classes is kept in the PhpStorm system folder; nothing is written to the project.
 - **Short class names.** `'XF:User'` in `finder()`, `em()->find()`, `repository()`, `service()`, `plugin()`, `enqueue()` and other factories is completed and opens the class that `XF::stringToClass` would load.
-- **Entity columns.** `where('…')`, `order('…')`, `with('…')` and `$entity->get('…')` complete columns, relations and getters, including paths like `User.username` and columns added by extensions.
-- **XenForo names in strings.** `\XF::phrase('…')`, `$this->view(…, '…')`, `renderTemplate('public:…')`, `buildLink('…')` and `hasPermission('…', '…')` complete and open phrases, templates, macros, routes and permissions. The phrase text is shown in gray.
-- **<kbd>Alt</kbd>+<kbd>Enter</kbd>.** On a class of XenForo or another add-on, **Extend class in XenForo add-on…** creates the extension and registers it. On `return parent::actionIndex($params);` it wraps the reply in a `$reply instanceof \XF\Mvc\Reply\View` check.
+- **Entity columns.** `where('…')`, `order('…')`, `with('…')` and `$entity->get('…')` complete columns, relations and getters, including paths like `User.username` and columns added by extensions and `entity_structure` listeners.
+- **XenForo names in strings.** `\XF::phrase('…')`, `$this->view(…, '…')`, `renderTemplate('public:…')`, `buildLink('…')` and `hasPermission('…', '…')` complete and open phrases, templates, macros, routes and permissions. The phrase text is shown in gray. An `admin:` template rendered from a `Pub` or `Api` controller or view is underlined.
+- **App container.** <kbd>Ctrl</kbd>+Click on a key in `\XF::app()->container('…')`, `$app['…']` and `$container['…']` opens the place where the key is defined, in XenForo itself or in add-on code such as an `app_setup` listener.
+- **Class extensions.** Right-click a class of XenForo or another add-on and choose **Extend Class in XenForo Add-on…** to create the extension and register it. The same item is in the context menu of the class file in the Project view and under <kbd>Alt</kbd>+<kbd>Enter</kbd>.
+- **Controller reply check.** <kbd>Alt</kbd>+<kbd>Enter</kbd> on `return parent::actionIndex($params);` wraps the reply in a `$reply instanceof \XF\Mvc\Reply\View` check.
 - **Setup.php.** `installStep1()`, `upgrade1000170Step2()` and `uninstallStep1()` get a run icon that executes the single step with `xf-addon:install-step`, `upgrade-step` or `uninstall-step`.
 - **JSON in `_output`.** Classes and methods in class extensions, code event listeners, routes, cron entries, widget definitions and options open on <kbd>Ctrl</kbd>+Click. `addon.json` and `build.json` are validated against a schema, so an unknown key or a missing `version_id` is underlined.
 
@@ -125,7 +128,7 @@ Right-click an add-on folder or any file inside it to open the **XenForo: Vendor
 | Extend Class… | `xf-make:extension` |
 | Lint Templates | `xf-dev:lint-templates`; errors in the output link to the template and line |
 | Find Unused Phrases | `xf-dev:unused-phrase-finder` |
-| Update Entity @property Docblocks | `xf-dev:entity-class-properties` |
+| Update Entity @property Docblocks | `xf-dev:entity-class-properties` for every entity of the add-on, or only for the entity whose file was right-clicked |
 | Check Classes Load | `xf-dev:class-lint` |
 | Generate .phpstorm.meta.php | `xf-dev:generate-phpstorm-meta` |
 | Generate Options Stub | `xf-dev:generate-options-stub` |
@@ -167,7 +170,7 @@ On macOS, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.
 |---|---|
 | Indentation, tabs by default | Settings → Editor → Code Style → XenForo Template |
 | Colors | Settings → Editor → Color Scheme → XenForo Template |
-| Tag, phrase and modification checks | Settings → Editor → Inspections → XenForo |
+| Tag, phrase, modification and admin template checks | Settings → Editor → Inspections → XenForo |
 | Phrase text after `phrase()` and `\XF::phrase()` | Settings → Editor → Inlay Hints, **Phrase text** |
 | PHP and forum folder for commands | Settings → PHP → XenForo |
 | Other files as templates | Settings → Editor → File Types → XenForo Template |
@@ -175,9 +178,9 @@ On macOS, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.
 ## Limitations
 
 - Templates and phrases that exist only in the admin control panel, not as files, are not visible to the plugin. Such phrases are reported as unknown.
-- Columns that an add-on adds with an `entity_structure` listener are not completed: the plugin reads `getStructure()` of the entity and its extensions.
+- Columns that `getStructure()` or an `entity_structure` listener adds in a loop or under a computed name are not completed.
 - Template variables come from `view()` calls whose parameters are an array or a variable in the same controller method.
-- Names taken from variables, such as `{{ phrase($name) }}`, are not checked or completed.
+- Names taken from variables, such as in `phrase_dynamic($name)`, are not checked or completed.
 - Commands need a working forum database, and `xf-dev:export` and `xf-dev:import` only work with development mode enabled in `config.php`.
 
 ## Building from source

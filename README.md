@@ -34,7 +34,8 @@
 - **Переменные из контроллера.** Плагин находит `$this->view(…, 'шаблон', $viewParams)` и знает тип каждого параметра: после `{$thread.` подсказываются поля `XF\Entity\Thread`. Значок на первой строке шаблона ведёт к контроллеру, а <kbd>Ctrl</kbd>+клик по переменной без `<xf:set>` открывает ключ массива в `view()`.
 - **Документация.** <kbd>Ctrl</kbd>+<kbd>Q</kbd> показывает текст фразы, описание настройки, атрибуты тега и параметры функции. После `{{ phrase('…') }}` серым виден текст фразы.
 - **Форматирование.** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> ставит отступы табами, как в шаблонах ядра. `<xf:else />` встаёт на уровень своего `<xf:if>` уже при наборе, атрибуты выравниваются по настройкам HTML.
-- **Ошибки компиляции.** Незакрытые и перепутанные теги, `<xf:else />` вне `<xf:if>`, неизвестные теги и недописанные выражения подчёркиваются сразу, до запуска форума.
+- **Ошибки компиляции.** Незакрытые и перепутанные теги, `<xf:else />` вне `<xf:if>`, неизвестные теги, недописанные выражения и `phrase($name)` с именем из переменной подчёркиваются сразу, до запуска форума. Для `phrase($name)` <kbd>Alt</kbd>+<kbd>Enter</kbd> заменяет вызов на `phrase_dynamic($name)`.
+- **Admin-шаблоны вне админки.** XenForo компилирует admin-шаблоны только для панели управления, поэтому `<xf:include template="admin:…">` в шаблонах `public` и `email` подчёркивается.
 - **Мелочи при наборе.** `{{` сам дописывает ` }}`, `>` в `<xf:foreach …>` дописывает закрывающий тег, <kbd>Ctrl</kbd>+<kbd>/</kbd> оборачивает выделение в `<xf:comment>`.
 
 <details>
@@ -83,9 +84,11 @@
 
 - **Классы `XFCP_…` больше не красные.** Плагин берёт расширения из `_output/class_extensions`, `_data/class_extensions.xml` и самих классов и сообщает PhpStorm, от какого класса наследуется каждое. Работают подсказки методов родителя, `parent::` и <kbd>Ctrl</kbd>+<kbd>O</kbd>. Заглушка с этими классами лежит в системной папке PhpStorm, в проект ничего не пишется.
 - **Короткие имена классов.** `'XF:User'` в `finder()`, `em()->find()`, `repository()`, `service()`, `plugin()`, `enqueue()` и других фабриках подсказывается и открывает класс, как его найдёт `XF::stringToClass`.
-- **Колонки сущностей.** В `where('…')`, `order('…')`, `with('…')` и `$entity->get('…')` подсказываются колонки, связи и геттеры, в том числе пути вида `User.username` и колонки, которые добавляют расширения.
-- **Имена XenForo в строках.** `\XF::phrase('…')`, `$this->view(…, '…')`, `renderTemplate('public:…')`, `buildLink('…')` и `hasPermission('…', '…')` подсказывают и открывают фразы, шаблоны, макросы, маршруты и права. После фразы серым виден её текст.
-- **<kbd>Alt</kbd>+<kbd>Enter</kbd>.** На классе XF или другого плагина пункт **Extend class in XenForo add-on…** создаёт расширение и регистрирует его. На `return parent::actionIndex($params);` пункт оборачивает ответ в проверку `$reply instanceof \XF\Mvc\Reply\View`.
+- **Колонки сущностей.** В `where('…')`, `order('…')`, `with('…')` и `$entity->get('…')` подсказываются колонки, связи и геттеры, в том числе пути вида `User.username` и колонки, которые добавляют расширения и слушатели `entity_structure`.
+- **Имена XenForo в строках.** `\XF::phrase('…')`, `$this->view(…, '…')`, `renderTemplate('public:…')`, `buildLink('…')` и `hasPermission('…', '…')` подсказывают и открывают фразы, шаблоны, макросы, маршруты и права. После фразы серым виден её текст. Если в контроллере или представлении из `Pub` или `Api` вызван `admin:`-шаблон, вызов подчёркивается.
+- **Контейнер приложения.** <kbd>Ctrl</kbd>+клик по ключу в `\XF::app()->container('…')`, `$app['…']` и `$container['…']` открывает место, где ключ задан: в ядре или в коде плагина, например в слушателе `app_setup`.
+- **Расширение класса.** Правый клик на классе XF или другого плагина, пункт **Extend Class in XenForo Add-on…**, создаёт расширение и регистрирует его. Тот же пункт есть у PHP-файла класса в дереве проекта и в <kbd>Alt</kbd>+<kbd>Enter</kbd>.
+- **Проверка ответа контроллера.** <kbd>Alt</kbd>+<kbd>Enter</kbd> на `return parent::actionIndex($params);` оборачивает ответ в проверку `$reply instanceof \XF\Mvc\Reply\View`.
 - **Setup.php.** Рядом с `installStep1()`, `upgrade1000170Step2()` и `uninstallStep1()` стоит значок запуска: шаг выполняется отдельно через `xf-addon:install-step`, `upgrade-step` или `uninstall-step`.
 - **JSON в `_output`.** Классы и методы в расширениях, слушателях событий, маршрутах, задачах cron, виджетах и настройках открываются по <kbd>Ctrl</kbd>+клику. `addon.json` и `build.json` проверяются по схеме: неизвестный ключ или пропущенный `version_id` подчёркивается.
 
@@ -125,7 +128,7 @@
 | Extend Class… | `xf-make:extension` |
 | Lint Templates | `xf-dev:lint-templates`, ошибки в выводе ведут к шаблону и строке |
 | Find Unused Phrases | `xf-dev:unused-phrase-finder` |
-| Update Entity @property Docblocks | `xf-dev:entity-class-properties` |
+| Update Entity @property Docblocks | `xf-dev:entity-class-properties` для всех сущностей плагина, а на файле сущности только для неё |
 | Check Classes Load | `xf-dev:class-lint` |
 | Generate .phpstorm.meta.php | `xf-dev:generate-phpstorm-meta` |
 | Generate Options Stub | `xf-dev:generate-options-stub` |
@@ -167,7 +170,7 @@
 |---|---|
 | Отступы, по умолчанию табы | Settings → Editor → Code Style → XenForo Template |
 | Цвета | Settings → Editor → Color Scheme → XenForo Template |
-| Проверки тегов, фраз и модификаций | Settings → Editor → Inspections → XenForo |
+| Проверки тегов, фраз, модификаций и admin-шаблонов | Settings → Editor → Inspections → XenForo |
 | Текст фразы после `phrase()` и `\XF::phrase()` | Settings → Editor → Inlay Hints, пункт **Phrase text** |
 | PHP и папка форума для команд | Settings → PHP → XenForo |
 | Другие файлы как шаблоны | Settings → Editor → File Types → XenForo Template |
@@ -175,9 +178,9 @@
 ## Ограничения
 
 - Шаблоны и фразы, которые есть только в панели управления, а не файлами, плагину не видны. Такие фразы проверка считает неизвестными.
-- Колонки, которые плагин добавляет через слушатель `entity_structure`, не подсказываются: плагин читает `getStructure()` сущности и её расширений.
+- Колонки, которые `getStructure()` или слушатель `entity_structure` добавляют в цикле или под вычисленным именем, не подсказываются.
 - Переменные шаблона берутся из `view()`, где параметры заданы массивом или переменной в том же методе контроллера.
-- Имена из переменных, например `{{ phrase($name) }}`, не проверяются и не подсказываются.
+- Имена из переменных, например в `phrase_dynamic($name)`, не проверяются и не подсказываются.
 - Командам нужна рабочая база форума, а `xf-dev:export` и `xf-dev:import` работают только в режиме разработки, включённом в `config.php`.
 
 ## Сборка из исходников
