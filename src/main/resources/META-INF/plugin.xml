@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>nt.xenforo</id>
-    <name>XenForo Templates</name>
+    <name>XenForo Tools</name>
     <vendor url="https://github.com/mityakuss-pixel/nt-xenforo-phpstorm">nt</vendor>
     <description><![CDATA[
 <p>Development tools for <a href="https://xenforo.com">XenForo 2</a> add-ons and styles: the template language,
