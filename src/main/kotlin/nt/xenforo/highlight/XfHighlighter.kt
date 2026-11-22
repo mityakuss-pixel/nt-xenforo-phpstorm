@@ -20,7 +20,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.TokenType
 import com.intellij.psi.tree.IElementType
-import nt.xenforo.lexer.XfLexerAdapter
+import nt.xenforo.lexer.XfHighlightingLexer
+import nt.xenforo.lexer.XfHighlightingTokens
 import nt.xenforo.psi.XfTokenSets
 import nt.xenforo.lang.XfTemplateFiles
 import nt.xenforo.psi.XfTypes
@@ -73,12 +74,13 @@ private val TOKEN_KEYS: Map<IElementType, TextAttributesKey> by lazy {
         put(XfTypes.STRING_TEXT, XfHighlighterColors.STRING)
         put(XfTypes.NUMBER, XfHighlighterColors.NUMBER)
         put(XfTypes.COMMENT, XfHighlighterColors.COMMENT)
+        put(XfHighlightingTokens.COMMENT_TAG, XfHighlighterColors.COMMENT)
         put(TokenType.BAD_CHARACTER, XfHighlighterColors.BAD_CHARACTER)
     }
 }
 
 class XfSyntaxHighlighter : SyntaxHighlighterBase() {
-    override fun getHighlightingLexer(): Lexer = XfLexerAdapter()
+    override fun getHighlightingLexer(): Lexer = XfHighlightingLexer()
 
     override fun getTokenHighlights(tokenType: IElementType): Array<TextAttributesKey> = pack(TOKEN_KEYS[tokenType])
 }

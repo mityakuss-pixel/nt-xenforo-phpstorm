@@ -2,6 +2,7 @@ package nt.xenforo
 
 import com.intellij.codeInsight.generation.actions.CommentByBlockCommentAction
 import com.intellij.openapi.actionSystem.IdeActions
+import com.intellij.psi.search.PsiTodoSearchHelper
 
 class XfEditorTest : XfTestCase() {
     fun testExpressionBracesAreClosed() {
@@ -69,5 +70,24 @@ class XfEditorTest : XfTestCase() {
         myFixture.editor.selectionModel.setSelection(5, 13)
         CommentByBlockCommentAction().actionPerformedImpl(project, myFixture.editor)
         assertEquals("<div><xf:comment>{{ \$a }}</xf:comment></div>", myFixture.editor.document.text)
+    }
+
+    fun testUncommentBlock() {
+        configureTemplate("<div><xf:comment>{{ \$a }}</xf:comment></div>")
+        myFixture.editor.caretModel.moveToOffset(20)
+        CommentByBlockCommentAction().actionPerformedImpl(project, myFixture.editor)
+        assertEquals("<div>{{ \$a }}</div>", myFixture.editor.document.text)
+    }
+
+    fun testTodoStopsBeforeClosingCommentTag() {
+        val file = configureTemplate("<xf:comment>TODO check this</xf:comment>\n<div></div>\n<xf:comment>\n\tTODO second\n</xf:comment>")
+        val todos = PsiTodoSearchHelper.getInstance(project).findTodoItems(file).map { it.textRange.substring(file.text) }.sorted()
+        assertEquals(listOf("TODO check this", "TODO second"), todos)
+    }
+
+    fun testEnterInsideCommentKeepsSingleClosingTag() {
+        configureTemplate("<xf:comment>note<caret></xf:comment>")
+        myFixture.performEditorAction(IdeActions.ACTION_EDITOR_ENTER)
+        assertEquals(1, Regex("</xf:comment>").findAll(myFixture.editor.document.text).count())
     }
 }
