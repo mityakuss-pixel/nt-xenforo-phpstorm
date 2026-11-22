@@ -2,6 +2,7 @@ package nt.xenforo
 
 import com.intellij.execution.filters.OpenFileHyperlinkInfo
 import nt.xenforo.commands.XfAddOns
+import nt.xenforo.commands.XfEntityPropertiesAction
 import nt.xenforo.commands.XfLintFilter
 import nt.xenforo.commands.XfLintTemplatesAction
 import nt.xenforo.commands.XfPhpStormMetaAction
@@ -60,6 +61,27 @@ class XfDevCommandsTest : XfTestCase() {
         )
         val root = myFixture.findFileInTempDir("src").parent
         assertEquals(listOf(XfMakeCommand("xf-make:entity", "Create an entity")), XfMakeCommands.list(root))
+    }
+
+    fun testEntityPropertiesTargetSingleEntity() {
+        myFixture.addFileToProject("src/XF/Mvc/Entity/Entity.php", "<?php\nnamespace XF\\Mvc\\Entity;\n\nabstract class Entity\n{\n}\n")
+        val entity = myFixture.addFileToProject(
+            "src/addons/Demo/Test/Entity/Sub/Guild.php",
+            "<?php\nnamespace Demo\\Test\\Entity\\Sub;\n\nclass Guild extends \\XF\\Mvc\\Entity\\Entity\n{\n}\n",
+        )
+        val repository = myFixture.addFileToProject(
+            "src/addons/Demo/Test/Repository/GuildRepository.php",
+            "<?php\nnamespace Demo\\Test\\Repository;\n\nclass GuildRepository\n{\n}\n",
+        )
+        val extension = myFixture.addFileToProject(
+            "src/addons/Demo/Test/XF/Entity/User.php",
+            "<?php\nnamespace Demo\\Test\\XF\\Entity;\n\nclass User extends XFCP_User\n{\n}\n",
+        )
+        val root = myFixture.findFileInTempDir("src").parent
+        val addOn = XfAddOns.find(myFixture.findFileInTempDir("src/addons/Demo/Test/addon.json"), root)!!
+        assertEquals("Demo\\Test:Sub\\Guild", XfEntityPropertiesAction.entityShortName(addOn, entity))
+        assertNull(XfEntityPropertiesAction.entityShortName(addOn, repository))
+        assertNull(XfEntityPropertiesAction.entityShortName(addOn, extension))
     }
 
     fun testCommandsNeedTheirXenForoClass() {

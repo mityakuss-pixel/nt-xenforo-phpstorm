@@ -3,9 +3,18 @@ package nt.xenforo.commands
 import com.intellij.execution.filters.Filter
 import com.intellij.execution.filters.OpenFileHyperlinkInfo
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
+import com.intellij.psi.util.PsiTreeUtil
+import com.jetbrains.php.lang.psi.PhpFile
+import com.jetbrains.php.lang.psi.elements.PhpClass
+import nt.xenforo.XfBundle.message
 import nt.xenforo.lang.XfTemplateFiles
+import nt.xenforo.php.XfEntityStructures
 
 private const val DEVELOPMENT_COMMANDS = "src/XF/Cli/Command/Development"
 private val LINT_ERROR = Regex("""^\[([^\]]+)] (\w+):([\w.-]+): (?:\D*(\d+))?""")
@@ -31,8 +40,45 @@ class XfUnusedPhrasesAction : XfDevCommandAction("UnusedPhraseFinder") {
 }
 
 class XfEntityPropertiesAction : XfDevCommandAction("EntityClassProperties") {
+    override fun update(event: AnActionEvent) {
+        super.update(event)
+        if (!event.presentation.isEnabledAndVisible) return
+        val entity = addOn(event)?.let { entity(event, it) }
+        event.presentation.text = entity?.let { message("action.entity.properties.single", it.substringAfterLast(NAMESPACE_SEPARATOR).substringAfterLast(':')) }
+            ?: templatePresentation.text
+    }
+
+    override fun actionPerformed(event: AnActionEvent) {
+        val project = event.project ?: return
+        val addOn = addOn(event) ?: return
+        val entity = entity(event, addOn) ?: return perform(project, addOn, templatePresentation.text)
+        XfCommandRunner.run(project, addOn, event.presentation.text, listOf(ENTITY_PROPERTIES, entity))
+    }
+
     override fun perform(project: Project, addOn: XfAddOn, title: String) =
-        XfCommandRunner.run(project, addOn, title, listOf("xf-dev:entity-class-properties", addOn.id))
+        XfCommandRunner.run(project, addOn, title, listOf(ENTITY_PROPERTIES, addOn.id))
+
+    private fun entity(event: AnActionEvent, addOn: XfAddOn): String? {
+        val project = event.project ?: return null
+        if (DumbService.isDumb(project)) return null
+        val file = event.getData(CommonDataKeys.VIRTUAL_FILE)?.let { PsiManager.getInstance(project).findFile(it) }
+        return entityShortName(addOn, file)
+    }
+
+    companion object {
+        private const val ENTITY_PROPERTIES = "xf-dev:entity-class-properties"
+        private const val NAMESPACE_SEPARATOR = '\\'
+
+        fun entityShortName(addOn: XfAddOn, file: PsiFile?): String? {
+            if (file !is PhpFile) return null
+            val namespace = addOn.id.replace('/', NAMESPACE_SEPARATOR)
+            val prefix = "$NAMESPACE_SEPARATOR$namespace${NAMESPACE_SEPARATOR}Entity$NAMESPACE_SEPARATOR"
+            val phpClass = PsiTreeUtil.findChildrenOfType(file, PhpClass::class.java).singleOrNull { !it.isInterface && !it.isTrait } ?: return null
+            if (phpClass.isAbstract || !phpClass.fqn.startsWith(prefix)) return null
+            if (!XfEntityStructures.isEntity(file.project, phpClass.fqn)) return null
+            return namespace + ":" + phpClass.fqn.removePrefix(prefix)
+        }
+    }
 }
 
 class XfPhpStormMetaAction : XfDevCommandAction("GeneratePhpStormMeta") {
