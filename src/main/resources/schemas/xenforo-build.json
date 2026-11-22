@@ -37,7 +37,7 @@
     },
     "exec": {
       "type": "array",
-      "description": "Shell commands run before packaging; {title}, {version_string} and {version_id} are replaced",
+      "description": "Shell commands run before packaging. Every {name} is replaced with a scalar value of XF\\AddOn\\AddOn: addon.json keys such as {title} and {version_string}, fields of the installed add-on, {addon_id}, {addon_id_url}, {json_version_id}, {json_version_string} and {legacy_addon_id}",
       "items": {
         "type": "string"
       }
