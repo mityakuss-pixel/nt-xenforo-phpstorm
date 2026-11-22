@@ -146,7 +146,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
     </projectListeners>
 
     <actions>
-        <group id="nt.xenforo.AddOn" class="nt.xenforo.commands.XfAddOnActionGroup" popup="true">
+        <group id="nt.xenforo.AddOn" class="nt.xenforo.commands.XfAddOnActionGroup" popup="true" icon="/icons/xenforoTemplate.svg">
             <action id="nt.xenforo.BuildRelease" class="nt.xenforo.commands.XfBuildReleaseAction"/>
             <action id="nt.xenforo.BumpVersion" class="nt.xenforo.commands.XfBumpVersionAction"/>
             <separator/>
