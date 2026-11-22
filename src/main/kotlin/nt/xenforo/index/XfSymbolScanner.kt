@@ -13,9 +13,14 @@ private const val MODIFICATIONS_FOLDER = "template_modifications"
 private const val ADD_ON_FILE = "addon.json"
 private const val ADD_ONS_FOLDER = "addons"
 
+private const val STRUCTURE_EVENT = "entity_structure"
+private const val CALLBACK_SEPARATOR = "::"
+
 private val DATA_FILES = setOf("templates.xml", "phrases.xml", "routes.xml", "style_properties.xml", "options.xml", "class_extensions.xml", "template_modifications.xml",
-    "widget_positions.xml", "permissions.xml", "admin_permission.xml")
-private val OUTPUT_FOLDERS = setOf("phrases", "routes", "style_properties", "options", "class_extensions", "widget_positions", "permissions", "admin_permissions")
+    "widget_positions.xml", "permissions.xml", "admin_permission.xml", "code_event_listeners.xml")
+private val OUTPUT_FOLDERS = setOf("phrases", "routes", "style_properties", "options", "class_extensions", "widget_positions", "permissions", "admin_permissions",
+    "code_event_listeners")
+private val XML_LISTENER = Regex("""<listener\s([^>]*?)/?>""")
 private val XML_WIDGET_POSITION = Regex("""<widget_position\s([^>]*?)/?>""")
 private val XML_PERMISSION = Regex("""<permission\s([^>]*?)/?>""")
 private val XML_ADMIN_PERMISSION = Regex("""<admin_permission\s([^>]*?)/?>""")
@@ -104,6 +109,7 @@ object XfSymbolScanner {
                     XfSymbolKeys.permission(it["permission_group_id"] ?: return@scanXmlIds null, it["permission_id"] ?: return@scanXmlIds null)
                 }
                 "admin_permission.xml" -> scanXmlIds(text, XML_ADMIN_PERMISSION, result) { XfSymbolKeys.adminPermission(it["admin_permission_id"] ?: return@scanXmlIds null) }
+                "code_event_listeners.xml" -> XML_LISTENER.findAll(text).forEach { addStructureListener(xmlAttributes(it.groupValues[1]), it.range.first, result) }
             }
             XfTemplateFiles.templateType(file) != null -> {
                 val type = parent.name
@@ -120,6 +126,7 @@ object XfSymbolScanner {
                 result[XfSymbolKeys.option(file.nameWithoutExtension)] = XfSymbol(0, XfOptionDetail.encode(fields["data_type"].orEmpty(), fields["edit_format"].orEmpty(), subOptions))
             }
             parent.name == "class_extensions" -> addExtension(jsonFields(text), 0, result)
+            parent.name == "code_event_listeners" -> addStructureListener(jsonFields(text), 0, result)
             parent.name == "widget_positions" -> result[XfSymbolKeys.widgetPosition(file.nameWithoutExtension)] = XfSymbol(0, "")
             parent.name == "admin_permissions" -> result[XfSymbolKeys.adminPermission(file.nameWithoutExtension)] = XfSymbol(0, "")
             parent.name == "permissions" -> {
@@ -267,6 +274,14 @@ object XfSymbolScanner {
         val from = fields["from_class"]?.trimStart(NAMESPACE_SEPARATOR)?.takeIf { it.isNotEmpty() } ?: return
         val to = fields["to_class"]?.trimStart(NAMESPACE_SEPARATOR)?.takeIf { it.isNotEmpty() } ?: return
         result.putIfAbsent(XfSymbolKeys.extension(to), XfSymbol(offset, from))
+    }
+
+    private fun addStructureListener(fields: Map<String, String>, offset: Int, result: MutableMap<String, XfSymbol>) {
+        if (fields["event_id"] != STRUCTURE_EVENT) return
+        val hint = fields["hint"]?.trimStart(NAMESPACE_SEPARATOR)?.takeIf { it.isNotEmpty() } ?: return
+        val callbackClass = fields["callback_class"]?.trimStart(NAMESPACE_SEPARATOR)?.takeIf { it.isNotEmpty() } ?: return
+        val callbackMethod = fields["callback_method"]?.takeIf { it.isNotEmpty() } ?: return
+        result.putIfAbsent(XfSymbolKeys.structureListener(hint, callbackClass + CALLBACK_SEPARATOR + callbackMethod), XfSymbol(offset, ""))
     }
 
     fun phraseText(text: CharSequence, offset: Int, isXml: Boolean): String {

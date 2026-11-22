@@ -36,7 +36,7 @@ class XfSymbolIndex : FileBasedIndexExtension<String, XfSymbol>() {
 
     override fun getValueExternalizer(): DataExternalizer<XfSymbol> = XfSymbolExternalizer
 
-    override fun getVersion(): Int = 10
+    override fun getVersion(): Int = 11
 
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { XfSymbolScanner.isIndexed(it) }
 
@@ -76,6 +76,8 @@ object XfSymbolKeys {
     fun permissionPrefix(group: String): String = "pm:$group:"
     fun adminPermission(id: String): String = "ap:$id"
     const val ADMIN_PERMISSION_PREFIX: String = "ap:"
+    fun structureListener(entity: String, callback: String): String = "es:$entity:$callback"
+    fun structureListenerPrefix(entity: String): String = "es:$entity:"
 }
 
 internal fun VirtualFile.hasAncestorChain(vararg names: String): Boolean {

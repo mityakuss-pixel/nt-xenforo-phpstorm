@@ -3,6 +3,7 @@ package nt.xenforo
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
 import com.jetbrains.php.lang.psi.elements.StringLiteralExpression
 import nt.xenforo.php.XfEntityFieldReference
+import nt.xenforo.php.XfEntityStructures
 
 class XfEntityStringsTest : XfTestCase() {
     override fun setUp() {
@@ -81,6 +82,34 @@ class XfEntityStringsTest : XfTestCase() {
         configureTemplate("{{ \$xf.visitor.<caret> }}")
         val variants = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
         assertContainsElements(variants, "demo_flag", "Profile")
+    }
+
+    fun testColumnsFromEntityStructureListeners() {
+        addOutputFile(
+            "code_event_listeners/entity_structure_demo.json",
+            "{\n    \"event_id\": \"entity_structure\",\n    \"execute_order\": 10,\n    \"callback_class\": \"Demo\\\\Test\\\\Listener\",\n" +
+                "    \"callback_method\": \"userEntityStructure\",\n    \"active\": true,\n    \"hint\": \"XF\\\\Entity\\\\User\",\n    \"description\": \"\"\n}",
+        )
+        myFixture.addFileToProject(
+            "src/addons/Other/Tools/_data/code_event_listeners.xml",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<code_event_listeners>\n" +
+                "  <listener event_id=\"entity_structure\" execute_order=\"10\" callback_class=\"\\Demo\\Test\\Listener\" callback_method=\"profileEntityStructure\"" +
+                " active=\"1\" hint=\"XF\\Entity\\UserProfile\" description=\"\"/>\n</code_event_listeners>",
+        )
+        myFixture.addFileToProject(
+            "src/addons/Demo/Test/Listener.php",
+            "<?php\nnamespace Demo\\Test;\n\nclass Listener\n{\n" +
+                "\tpublic static function userEntityStructure(\$em, &\$structure)\n\t{\n" +
+                "\t\t\$structure->columns['demo_listener_flag'] = ['type' => \\XF\\Mvc\\Entity\\Entity::BOOL];\n" +
+                "\t\t\$structure->relations['DemoProfile'] = ['entity' => 'XF:UserProfile'];\n\t}\n\n" +
+                "\tpublic static function profileEntityStructure(\$em, &\$structure)\n\t{\n" +
+                "\t\t\$structure->columns['demo_profile_flag'] = ['type' => \\XF\\Mvc\\Entity\\Entity::STR];\n\t}\n}\n",
+        )
+        val user = complete("\\XF::finder('XF:User')->where('<caret>');")
+        assertContainsElements(user, "user_id", "demo_listener_flag", "DemoProfile")
+        assertDoesntContain(user, "demo_profile_flag")
+        assertContainsElements(complete("\\XF::finder('XF:UserProfile')->where('<caret>');"), "about", "demo_profile_flag")
+        assertEquals("bool", XfEntityStructures.of(project, "XF\\Entity\\User")["demo_listener_flag"]?.type)
     }
 
     private fun complete(statement: String): List<String> {

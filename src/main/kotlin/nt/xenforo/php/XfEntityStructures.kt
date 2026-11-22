@@ -15,12 +15,15 @@ import com.jetbrains.php.lang.psi.elements.AssignmentExpression
 import com.jetbrains.php.lang.psi.elements.ClassConstantReference
 import com.jetbrains.php.lang.psi.elements.ClassReference
 import com.jetbrains.php.lang.psi.elements.FieldReference
+import com.jetbrains.php.lang.psi.elements.Method
 import com.jetbrains.php.lang.psi.elements.PhpClass
 import com.jetbrains.php.lang.psi.elements.StringLiteralExpression
 import nt.xenforo.index.XfDataTracker
+import nt.xenforo.index.XfSymbolKeys
 import java.util.concurrent.ConcurrentHashMap
 
 private const val STRUCTURE_METHOD = "getStructure"
+private const val CALLBACK_SEPARATOR = "::"
 private const val ENTITY_BASE = "\\XF\\Mvc\\Entity\\Entity"
 private const val FINDER_BASE = "\\XF\\Mvc\\Entity\\Finder"
 private const val SEPARATOR = '\\'
@@ -89,9 +92,9 @@ object XfEntityStructures {
         val base = entity.trimStart(SEPARATOR)
         val extensions = XfClassExtensions.all(project).filterValues { it.trimStart(SEPARATOR) == base }.keys
         val classes = (listOf(entity) + extensions.map { SEPARATOR + it }).flatMap { index.getClassesByFQN(it) }
+        val methods = classes.mapNotNull { it.findOwnMethodByName(STRUCTURE_METHOD) } + listenerMethods(project, base)
         val result = LinkedHashMap<String, XfEntityField>()
-        for (phpClass in classes) {
-            val method = phpClass.findOwnMethodByName(STRUCTURE_METHOD) ?: continue
+        for (method in methods) {
             for (assignment in PsiTreeUtil.findChildrenOfType(method, AssignmentExpression::class.java)) {
                 when (val target = assignment.variable) {
                     is FieldReference -> {
@@ -111,6 +114,17 @@ object XfEntityStructures {
             }
         }
         return result
+    }
+
+    private fun listenerMethods(project: Project, entity: String): List<Method> {
+        val index = PhpIndex.getInstance(project)
+        val prefix = XfSymbolKeys.structureListenerPrefix(entity)
+        return XfDataTracker.keys(project, prefix).mapNotNull { key ->
+            val callback = key.removePrefix(prefix)
+            val className = callback.substringBefore(CALLBACK_SEPARATOR)
+            val methodName = callback.substringAfter(CALLBACK_SEPARATOR, "").takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            index.getClassesByFQN(normalize(className)).firstNotNullOfOrNull { it.findMethodByName(methodName) }
+        }
     }
 
     private fun add(result: MutableMap<String, XfEntityField>, field: XfEntityField?) {
