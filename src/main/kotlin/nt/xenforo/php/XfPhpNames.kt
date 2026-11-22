@@ -31,13 +31,17 @@ import com.intellij.psi.impl.source.resolve.ResolveCache
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 import com.jetbrains.php.lang.psi.PhpFile
+import com.jetbrains.php.lang.psi.elements.ArrayAccessExpression
+import com.jetbrains.php.lang.psi.elements.ArrayIndex
 import com.jetbrains.php.lang.psi.elements.FunctionReference
+import com.jetbrains.php.lang.psi.elements.PhpTypedElement
 import com.jetbrains.php.lang.psi.elements.MethodReference
 import com.jetbrains.php.lang.psi.elements.ParameterList
 import com.jetbrains.php.lang.psi.elements.PhpClass
 import com.jetbrains.php.lang.psi.elements.StringLiteralExpression
 import nt.xenforo.documentation.XfDocumentation
 import nt.xenforo.documentation.XfDocumentationTarget
+import nt.xenforo.index.XfDataTracker
 import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.index.XfSymbols
 import nt.xenforo.lang.XfIcons
@@ -52,6 +56,10 @@ private const val EMAIL = "email"
 private const val ADMIN_NAMESPACE = "\\Admin\\"
 private const val HINT_LIMIT = 40
 private const val NODE_PERMISSION_GROUP = "forum"
+private const val CONTAINER_METHOD = "container"
+private const val CONTAINER_CLASS = "\\XF\\Container"
+private const val CORE_NAMESPACE = "\\XF\\"
+private const val APP_CLASS_SUFFIX = "\\App"
 private val ROUTE_MODIFIER = Regex("""^[a-z_]+:""")
 
 data class XfPhpSlot(val kind: XfNameKind, val range: TextRange, val keyPrefix: String) {
@@ -67,6 +75,7 @@ data class XfPhpSlot(val kind: XfNameKind, val range: TextRange, val keyPrefix: 
 
 object XfPhpNames {
     fun slot(literal: StringLiteralExpression): XfPhpSlot? {
+        if (literal.parent is ArrayIndex) return containerAccess(literal)
         val parameters = literal.parent as? ParameterList ?: return null
         val call = parameters.parent as? FunctionReference ?: return null
         val callName = call.name?.lowercase() ?: return null
@@ -93,9 +102,29 @@ object XfPhpNames {
             "hasnodepermission" to 1, "hascontentpermission" to 1 ->
                 XfPhpSlot(XfNameKind.PERMISSION, TextRange(start, start + value.length), XfSymbolKeys.permissionPrefix(NODE_PERMISSION_GROUP))
             "hasadminpermission" to 0 -> XfPhpSlot(XfNameKind.PERMISSION, TextRange(start, start + value.length), XfSymbolKeys.ADMIN_PERMISSION_PREFIX)
+            CONTAINER_METHOD to 0 -> if (call is MethodReference) containerSlot(literal) else null
             else -> null
         }
     }
+
+    private fun containerAccess(literal: StringLiteralExpression): XfPhpSlot? {
+        val access = literal.parent?.parent as? ArrayAccessExpression ?: return null
+        if (access.index?.value != literal || !literal.isSingleQuote && literal.text.contains('$')) return null
+        val project = literal.project
+        if (DumbService.isDumb(project)) return null
+        if (XfSymbolKeys.container(literal.contents) !in XfDataTracker.keys(project, XfSymbolKeys.CONTAINER_PREFIX)) return null
+        val holder = access.value as? PhpTypedElement ?: return null
+        if (holder.globalType.types.none(::isContainerType)) return null
+        return containerSlot(literal)
+    }
+
+    private fun containerSlot(literal: StringLiteralExpression): XfPhpSlot {
+        val start = literal.valueRange.startOffset
+        return XfPhpSlot(XfNameKind.CONTAINER, TextRange(start, start + literal.contents.length), XfSymbolKeys.CONTAINER_PREFIX)
+    }
+
+    private fun isContainerType(type: String): Boolean =
+        type == CONTAINER_CLASS || type.startsWith(CORE_NAMESPACE) && type.endsWith(APP_CLASS_SUFFIX)
 
     fun documentation(file: PsiFile, offset: Int): XfDocumentationTarget? {
         if (file !is PhpFile) return null
@@ -212,6 +241,7 @@ private class XfPhpNameCompletion : CompletionProvider<CompletionParameters>() {
         XfNameKind.TEMPLATE -> XfIcons.FILE
         XfNameKind.MACRO -> AllIcons.Nodes.Method
         XfNameKind.ROUTE -> AllIcons.Nodes.Related
+        XfNameKind.CONTAINER -> AllIcons.Nodes.Variable
         else -> AllIcons.Nodes.Tag
     }
 }

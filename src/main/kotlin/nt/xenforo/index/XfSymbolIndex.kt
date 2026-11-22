@@ -78,6 +78,8 @@ object XfSymbolKeys {
     const val ADMIN_PERMISSION_PREFIX: String = "ap:"
     fun structureListener(entity: String, callback: String): String = "es:$entity:$callback"
     fun structureListenerPrefix(entity: String): String = "es:$entity:"
+    fun container(key: String): String = "ck:$key"
+    const val CONTAINER_PREFIX: String = "ck:"
 }
 
 internal fun VirtualFile.hasAncestorChain(vararg names: String): Boolean {

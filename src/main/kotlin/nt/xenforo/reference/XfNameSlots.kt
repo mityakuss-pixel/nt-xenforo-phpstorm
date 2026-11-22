@@ -17,7 +17,7 @@ import nt.xenforo.psi.XfReferenceHost
 import nt.xenforo.psi.XfStringExpr
 import nt.xenforo.psi.XfTypes
 
-enum class XfNameKind { TEMPLATE, MACRO, PHRASE, ROUTE, PROPERTY, HANDLER, WIDGET_POSITION, EXTENSION, PERMISSION }
+enum class XfNameKind { TEMPLATE, MACRO, PHRASE, ROUTE, PROPERTY, HANDLER, WIDGET_POSITION, EXTENSION, PERMISSION, CONTAINER }
 
 data class XfNameSlot(
     val kind: XfNameKind,

@@ -50,6 +50,7 @@ class XfNameCompletionProvider : CompletionProvider<CompletionParameters>() {
             XfNameKind.WIDGET_POSITION -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Plugin)
             XfNameKind.PERMISSION -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Padlock)
             XfNameKind.EXTENSION -> for (name in XfTemplateExtensions.names(host)) names.addElement(LookupElementBuilder.create(name).withIcon(AllIcons.Nodes.Template))
+            XfNameKind.CONTAINER -> addDetailed(project, slot.keyPrefix, names, AllIcons.Nodes.Variable)
         }
     }
 

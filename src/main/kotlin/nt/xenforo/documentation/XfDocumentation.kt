@@ -263,6 +263,7 @@ object XfDocumentation {
             XfNameKind.WIDGET_POSITION -> XfDocumentationTarget(name, AllIcons.Nodes.Plugin, plain("widget position ") + bold(name), message("doc.kind.widget.position"), listOfNotNull(definedIn(project, key)))
             XfNameKind.PERMISSION -> XfDocumentationTarget(name, AllIcons.Nodes.Padlock, plain("permission ") + bold(key.substringAfter(':').replace(':', '.')), message("doc.kind.permission"), listOfNotNull(definedIn(project, key)))
             XfNameKind.EXTENSION -> XfDocumentationTarget(name, AllIcons.Nodes.Template, plain("extension ") + bold(name), "")
+            XfNameKind.CONTAINER -> XfDocumentationTarget(name, AllIcons.Nodes.Variable, plain("container ") + bold(name), message("doc.kind.container"), listOfNotNull(definedIn(project, key)))
             XfNameKind.PROPERTY -> {
                 val title = XfSymbols.detail(project, key)?.takeIf { it.isNotEmpty() }?.let(::escape)
                 XfDocumentationTarget(name, AllIcons.Nodes.Property, plain("property ") + bold(name), title ?: message("doc.kind.property"), listOfNotNull(definedIn(project, key)))

@@ -25,7 +25,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
   <li>Short class names such as <code>'XF:User'</code> in finders, repositories, services, plugins and jobs</li>
   <li>Entity columns, relations and getters in <code>where()</code>, <code>order()</code>, <code>with()</code> and <code>get()</code>,
       including columns added by extensions</li>
-  <li>Phrases, templates, macros, routes and permissions in PHP strings</li>
+  <li>Phrases, templates, macros, routes, permissions and app container keys in PHP strings</li>
   <li>Links from <code>_output</code> JSON to classes and methods, and checks for <code>addon.json</code> and <code>build.json</code></li>
 </ul>
 <h3>Phrases and template modifications</h3>

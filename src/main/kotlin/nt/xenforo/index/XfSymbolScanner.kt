@@ -89,6 +89,7 @@ object XfSymbolScanner {
             XfExtensionClasses.isIndexed(file) -> {
                 XfExtensionClasses.scan(text, result)
                 XfExtensionClasses.scanViews(file, text, result)
+                XfContainerKeys.scan(text, result)
             }
             isModificationJson(file) -> {
                 val fields = jsonFields(text)
