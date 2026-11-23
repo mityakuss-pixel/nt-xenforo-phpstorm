@@ -89,6 +89,7 @@ Every stylesheet gets what `XF\CssRenderer` adds to it: `public:setup.less` with
 - **App container.** <kbd>Ctrl</kbd>+Click on a key in `\XF::app()->container('…')`, `$app['…']` and `$container['…']` opens the place where the key is defined, in XenForo itself or in add-on code such as an `app_setup` listener.
 - **Class extensions.** Right-click a class of XenForo or another add-on and choose **Extend Class in XenForo Add-on…** to create the extension and register it. The same item is in the context menu of the class file in the Project view and under <kbd>Alt</kbd>+<kbd>Enter</kbd>.
 - **Controller reply check.** <kbd>Alt</kbd>+<kbd>Enter</kbd> on `return parent::actionIndex($params);` wraps the reply in a `$reply instanceof \XF\Mvc\Reply\View` check.
+- **Add-on scopes.** Every add-on with `_output` gets a ready-made "XenForo: Vendor/AddOn" scope for Find in Files, file colors and inspection settings.
 - **Setup.php.** `installStep1()`, `upgrade1000170Step2()` and `uninstallStep1()` get a run icon that executes the single step with `xf-addon:install-step`, `upgrade-step` or `uninstall-step`.
 - **JSON in `_output`.** Classes and methods in class extensions, code event listeners, routes, cron entries, widget definitions and options open on <kbd>Ctrl</kbd>+Click. `addon.json` and `build.json` are validated against a schema, so an unknown key or a missing `version_id` is underlined.
 

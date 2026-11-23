@@ -64,6 +64,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <annotator language="XenForoTemplate" implementationClass="nt.xenforo.highlight.XfAnnotator"/>
         <highlightErrorFilter implementation="nt.xenforo.highlight.XfErrorFilter"/>
         <elementDescriptionProvider implementation="nt.xenforo.index.XfSymbolDescriptionProvider"/>
+        <customScopesProvider implementation="nt.xenforo.commands.XfAddOnScopesProvider"/>
         <localInspection language="XenForoTemplate" shortName="XfUnknownTag" enabledByDefault="true" level="WARNING"
                          key="inspection.unknown.tag.display.name" groupKey="inspection.group.name"
                          implementationClass="nt.xenforo.inspection.XfUnknownTagInspection"/>
