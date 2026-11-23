@@ -64,6 +64,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <annotator language="XenForoTemplate" implementationClass="nt.xenforo.highlight.XfAnnotator"/>
         <highlightErrorFilter implementation="nt.xenforo.highlight.XfErrorFilter"/>
         <elementDescriptionProvider implementation="nt.xenforo.index.XfSymbolDescriptionProvider"/>
+        <editorNotificationProvider implementation="nt.xenforo.php.XfPhpLevelNotificationProvider"/>
         <customScopesProvider implementation="nt.xenforo.commands.XfAddOnScopesProvider"/>
         <localInspection language="XenForoTemplate" shortName="XfUnknownTag" enabledByDefault="true" level="WARNING"
                          key="inspection.unknown.tag.display.name" groupKey="inspection.group.name"
@@ -167,6 +168,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
             <action id="nt.xenforo.ImportOutput" class="nt.xenforo.commands.XfImportOutputAction"/>
             <action id="nt.xenforo.ExportData" class="nt.xenforo.commands.XfExportDataAction"/>
             <action id="nt.xenforo.SyncJson" class="nt.xenforo.commands.XfSyncJsonAction"/>
+            <action id="nt.xenforo.PhpLevel" class="nt.xenforo.php.XfPhpLevelAction"/>
             <separator/>
             <action id="nt.xenforo.LintTemplates" class="nt.xenforo.commands.XfLintTemplatesAction"/>
             <action id="nt.xenforo.UnusedPhrases" class="nt.xenforo.commands.XfUnusedPhrasesAction"/>
