@@ -42,6 +42,14 @@ class XfModelTest : XfTestCase() {
         assertEquals("username", (target as PhpDocProperty).name)
     }
 
+    fun testUnknownVariableMemberStaysUnresolvedWithoutWarnings() {
+        configureTemplate("{{ \$unknown.fi<caret>eld }}")
+        val reference = myFixture.getReferenceAtCaretPositionWithAssertion() as XfMemberReference
+        assertTrue(reference.isSoft)
+        assertNull(reference.resolve())
+        myFixture.checkHighlighting(true, false, true)
+    }
+
     fun testOptionsFromDataAndOutput() {
         addDataFile("options.xml", OPTIONS)
         addOutputFile("options/demoLimit.json", "{\n    \"edit_format\": \"spinbox\",\n    \"data_type\": \"integer\",\n    \"sub_options\": []\n}")

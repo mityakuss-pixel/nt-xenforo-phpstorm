@@ -70,7 +70,7 @@ private val CALLABLE_RESOLVER = ResolveCache.AbstractResolver<XfCallableReferenc
 private class XfMemberReferenceProvider : PsiReferenceProvider() {
     override fun getReferencesByElement(element: PsiElement, context: ProcessingContext): Array<PsiReference> {
         val expression = element as? XfAccessExpression ?: return PsiReference.EMPTY_ARRAY
-        if (XfAccess.rootType(expression) == null) return PsiReference.EMPTY_ARRAY
+        if (expression.variableName.isEmpty()) return PsiReference.EMPTY_ARRAY
         val start = expression.textRange.startOffset
         return expression.segments.mapIndexedNotNull { index, segment ->
             if (segment.name == null) return@mapIndexedNotNull null
