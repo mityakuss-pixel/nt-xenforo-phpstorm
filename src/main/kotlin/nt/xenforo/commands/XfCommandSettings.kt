@@ -17,7 +17,14 @@ class XfCommandSettings : SimplePersistentStateComponent<XfCommandSettings.Optio
     class Options : BaseState() {
         var interpreter by string()
         var root by string()
+        var followAddOnPhpLevel by property(false)
     }
+
+    var followAddOnPhpLevel: Boolean
+        get() = state.followAddOnPhpLevel
+        set(value) {
+            state.followAddOnPhpLevel = value
+        }
 
     var interpreter: String?
         get() = state.interpreter

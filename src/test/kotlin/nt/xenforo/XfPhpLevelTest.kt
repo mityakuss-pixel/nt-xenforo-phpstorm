@@ -4,6 +4,7 @@ import com.intellij.ide.util.PropertiesComponent
 import com.jetbrains.php.config.PhpLanguageLevel
 import com.jetbrains.php.config.PhpProjectConfigurationFacade
 import nt.xenforo.commands.XfAddOns
+import nt.xenforo.commands.XfCommandSettings
 import nt.xenforo.php.DISMISSED_ADD_ONS
 import nt.xenforo.php.HIDDEN_ADD_ONS
 import nt.xenforo.php.XfAddOnPhpLevel
@@ -67,5 +68,24 @@ class XfPhpLevelTest : XfTestCase() {
         XfAddOnPhpLevel.dismiss(project, addOn)
         assertNull(provider.collectNotificationData(project, file))
         assertFalse(XfAddOnPhpLevel.isHidden(project, addOn))
+    }
+
+    fun testFollowSettingSwitchesLevel() {
+        val settings = XfCommandSettings.getInstance(project)
+        val file = myFixture.addFileToProject("src/addons/Demo/Test/Setup.php", "<?php\n").virtualFile
+        val plain = myFixture.addFileToProject("src/addons/Demo/Plain/Setup.php", "<?php\n").virtualFile
+        try {
+            PhpProjectConfigurationFacade.getInstance(project).languageLevel = PhpLanguageLevel.PHP840
+            XfAddOnPhpLevel.follow(project, file)
+            assertEquals(PhpLanguageLevel.PHP840, XfAddOnPhpLevel.current(project))
+            settings.followAddOnPhpLevel = true
+            assertNull(XfPhpLevelNotificationProvider().collectNotificationData(project, file))
+            XfAddOnPhpLevel.follow(project, plain)
+            assertEquals(PhpLanguageLevel.PHP840, XfAddOnPhpLevel.current(project))
+            XfAddOnPhpLevel.follow(project, file)
+            assertEquals(PhpLanguageLevel.PHP740, XfAddOnPhpLevel.current(project))
+        } finally {
+            settings.followAddOnPhpLevel = false
+        }
     }
 }

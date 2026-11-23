@@ -6,6 +6,7 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogPanel
 import com.intellij.openapi.util.Condition
 import com.intellij.ui.dsl.builder.AlignX
+import com.intellij.ui.dsl.builder.bindSelected
 import com.intellij.ui.dsl.builder.bindText
 import com.intellij.ui.dsl.builder.panel
 import com.jetbrains.php.config.PhpProjectConfigurationFacade
@@ -36,6 +37,11 @@ class XfCommandConfigurable(private val project: Project) :
                     .align(AlignX.FILL)
                     .bindText({ settings.root.orEmpty() }, { settings.root = it })
                     .comment(message("settings.commands.root.comment"))
+            }
+            row {
+                checkBox(message("settings.php.level.follow"))
+                    .bindSelected({ settings.followAddOnPhpLevel }, { settings.followAddOnPhpLevel = it })
+                    .comment(message("settings.php.level.follow.comment"))
             }
         }
     }

@@ -152,6 +152,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
 
     <projectListeners>
         <listener class="nt.xenforo.modification.XfTemplatesXmlMarkers" topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
+        <listener class="nt.xenforo.php.XfPhpLevelFollower" topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>
     </projectListeners>
 
     <actions>

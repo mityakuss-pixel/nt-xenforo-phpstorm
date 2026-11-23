@@ -5,6 +5,8 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditor
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
@@ -19,6 +21,7 @@ import nt.xenforo.XfBundle.message
 import nt.xenforo.commands.XfAddOn
 import nt.xenforo.commands.XfAddOnAction
 import nt.xenforo.commands.XfAddOns
+import nt.xenforo.commands.XfCommandSettings
 import java.util.concurrent.ConcurrentHashMap
 import java.util.function.Function
 import javax.swing.JComponent
@@ -62,6 +65,13 @@ object XfAddOnPhpLevel {
         EditorNotifications.getInstance(project).updateAllNotifications()
     }
 
+    fun follow(project: Project, file: VirtualFile?) {
+        if (file == null || project.isDisposed || !XfCommandSettings.getInstance(project).followAddOnPhpLevel) return
+        if (!file.extension.equals(PHP_EXTENSION, ignoreCase = true)) return
+        val addOn = XfAddOns.find(project, file) ?: return
+        mismatch(project, addOn)?.let { apply(project, it) }
+    }
+
     fun isHidden(project: Project, addOn: XfAddOn): Boolean =
         PropertiesComponent.getInstance(project).getList(HIDDEN_ADD_ONS).orEmpty().contains(addOn.id)
 
@@ -83,6 +93,7 @@ object XfAddOnPhpLevel {
 class XfPhpLevelNotificationProvider : EditorNotificationProvider, DumbAware {
     override fun collectNotificationData(project: Project, file: VirtualFile): Function<in FileEditor, out JComponent?>? {
         if (!file.extension.equals(PHP_EXTENSION, ignoreCase = true)) return null
+        if (XfCommandSettings.getInstance(project).followAddOnPhpLevel) return null
         val addOn = XfAddOns.find(project, file) ?: return null
         if (XfAddOnPhpLevel.isHidden(project, addOn) || XfAddOnPhpLevel.isDismissed(project, addOn)) return null
         val required = XfAddOnPhpLevel.mismatch(project, addOn) ?: return null
@@ -95,6 +106,12 @@ class XfPhpLevelNotificationProvider : EditorNotificationProvider, DumbAware {
                 setCloseAction { XfAddOnPhpLevel.dismiss(project, addOn) }
             }
         }
+    }
+}
+
+class XfPhpLevelFollower : FileEditorManagerListener {
+    override fun selectionChanged(event: FileEditorManagerEvent) {
+        XfAddOnPhpLevel.follow(event.manager.project, event.newFile)
     }
 }
 
