@@ -1,0 +1,1 @@
+$user = \XF::em()->create(\XF\Entity\User::class);

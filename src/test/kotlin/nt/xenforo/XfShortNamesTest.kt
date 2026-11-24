@@ -66,6 +66,34 @@ class XfShortNamesTest : XfTestCase() {
         assertContainsElements(myFixture.completeBasic()?.map { it.lookupString }.orEmpty(), "XF:User", "Demo\\Test:Note")
     }
 
+    fun testShortNameToClassIntention() {
+        val cases = listOf(
+            "\\XF::em()->create('XF:Us<caret>er');" to "\\XF::em()->create(\\XF\\Entity\\User::class);",
+            "\\XF::finder('XF:Us<caret>er');" to "\\XF::finder(\\XF\\Finder\\UserFinder::class);",
+            "\\XF::repository('XF:Us<caret>er');" to "\\XF::repository(\\XF\\Repository\\UserRepository::class);",
+            "\$structure->relations = ['User' => ['entity' => 'XF:Us<caret>er']];" to "\$structure->relations = ['User' => ['entity' => \\XF\\Entity\\User::class]];",
+        )
+        for ((source, expected) in cases) {
+            configurePhp(source)
+            val intention = myFixture.availableIntentions.singleOrNull { it.familyName == XfBundle.message("intention.short.name.family") }
+            assertNotNull(source, intention)
+            myFixture.launchAction(intention!!)
+            assertTrue(myFixture.editor.document.text, myFixture.editor.document.text.contains(expected))
+        }
+    }
+
+    fun testShortNameToClassIntentionKeepsShortNamesWhereXenForoDoes() {
+        for (source in listOf(
+            "\$this->view('XF:Thread\\Vi<caret>ew', 'thread_view');",
+            "\$structure->behaviors = ['XF:ChangeLog<caret>gable' => []];",
+            "\$structure->shortName = 'XF:Us<caret>er';",
+            "\\XF::em()->create('XF:Miss<caret>ing');",
+        )) {
+            configurePhp(source)
+            assertEmpty(source, myFixture.availableIntentions.filter { it.familyName == XfBundle.message("intention.short.name.family") })
+        }
+    }
+
     private var files = 0
 
     private fun resolved(statement: String, namespace: String = "Demo\\Test\\Pub\\Controller"): String? {

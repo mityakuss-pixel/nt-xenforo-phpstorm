@@ -146,6 +146,12 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
             <categoryKey>intention.category</categoryKey>
         </intentionAction>
         <intentionAction>
+            <language>PHP</language>
+            <className>nt.xenforo.php.XfShortNameClassIntention</className>
+            <bundleName>messages.XfBundle</bundleName>
+            <categoryKey>intention.category</categoryKey>
+        </intentionAction>
+        <intentionAction>
             <className>nt.xenforo.phrase.XfExtractPhraseIntention</className>
             <bundleName>messages.XfBundle</bundleName>
             <categoryKey>intention.category</categoryKey>

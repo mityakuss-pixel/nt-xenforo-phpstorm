@@ -54,7 +54,7 @@ enum class XfShortKind(val namespace: String, val suffix: String?, val base: Str
     FORUM_TYPE("ForumType", "Handler", "\\XF\\ForumType\\AbstractHandler"),
 }
 
-data class XfShortContext(val kinds: List<XfShortKind>, val section: String)
+data class XfShortContext(val kinds: List<XfShortKind>, val section: String, val acceptsClass: Boolean = true)
 
 object XfShortNames {
     private val CALLS: Map<String, Pair<Int, List<XfShortKind>>> = mapOf(
@@ -96,19 +96,19 @@ object XfShortNames {
             val call = parent.parent as? FunctionReference ?: return null
             val (index, kinds) = CALLS[call.name?.lowercase()] ?: return null
             if (parent.parameters.indexOf(literal) != index) return null
-            return XfShortContext(kinds, section(literal))
+            return XfShortContext(kinds, section(literal), acceptsClass = XfShortKind.VIEW !in kinds)
         }
         val hash = parent as? ArrayHashElement ?: parent?.parent as? ArrayHashElement
         if (hash != null) {
             if (hash.value == literal && (hash.key as? StringLiteralExpression)?.contents == ENTITY_KEY) return XfShortContext(listOf(XfShortKind.ENTITY), section(literal))
-            if (hash.key == literal && isAssignedTo(hash.parent, BEHAVIORS)) return XfShortContext(listOf(XfShortKind.BEHAVIOR), section(literal))
+            if (hash.key == literal && isAssignedTo(hash.parent, BEHAVIORS)) return XfShortContext(listOf(XfShortKind.BEHAVIOR), section(literal), acceptsClass = false)
             return null
         }
         val index = PsiTreeUtil.getParentOfType(literal, ArrayAccessExpression::class.java)
-        if (index != null && index.index?.value == literal && (index.value as? FieldReference)?.name == BEHAVIORS) return XfShortContext(listOf(XfShortKind.BEHAVIOR), section(literal))
+        if (index != null && index.index?.value == literal && (index.value as? FieldReference)?.name == BEHAVIORS) return XfShortContext(listOf(XfShortKind.BEHAVIOR), section(literal), acceptsClass = false)
         val assignment = parent as? AssignmentExpression
         if (assignment != null && assignment.value == literal && (assignment.variable as? FieldReference)?.name == SHORT_NAME_FIELD) {
-            return XfShortContext(listOf(XfShortKind.ENTITY), section(literal))
+            return XfShortContext(listOf(XfShortKind.ENTITY), section(literal), acceptsClass = false)
         }
         return null
     }
