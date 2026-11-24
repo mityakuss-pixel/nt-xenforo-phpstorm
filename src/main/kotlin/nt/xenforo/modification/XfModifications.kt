@@ -12,12 +12,12 @@ import nt.xenforo.index.XfSymbolKeys
 import java.lang.ref.SoftReference
 import nt.xenforo.index.XfSymbolLocation
 import nt.xenforo.index.XfSymbols
+import nt.xenforo.index.XfTemplatesXml
 import java.util.regex.Pattern
 import java.util.regex.PatternSyntaxException
 
 private const val CDATA_START = "<![CDATA["
 private const val CDATA_END = "]]>"
-private const val TEMPLATE_END = "</template>"
 private const val MODIFICATION_END = "</modification>"
 private const val MATCH_LIMIT = 100
 private val TEXT = Key.create<SoftReference<Pair<Long, CharSequence>>>("nt.xenforo.modificationText")
@@ -125,8 +125,7 @@ object XfModifications {
         val text = text(file)
         if (location.isOutput) return XfTemplateSource(file, TextRange(0, text.length), text)
         val start = location.symbol.offset
-        val cdata = start >= CDATA_START.length && StringUtil.startsWith(text, start - CDATA_START.length, CDATA_START)
-        val end = StringUtil.indexOf(text, if (cdata) CDATA_END else TEMPLATE_END, start).takeIf { it >= 0 } ?: return null
+        val end = XfTemplatesXml.bodyEnd(text, start)
         return XfTemplateSource(file, TextRange(start, end), text)
     }
 

@@ -138,6 +138,23 @@ class XfMacroTest : XfTestCase() {
         assertEquals(listOf("still_missing"), unknownMacros())
     }
 
+    fun testMacroAfterHtmlTemplateTagInTemplatesXml() {
+        myFixture.enableInspections(XfUnknownMacroInspection::class.java)
+        addDataFile(
+            "templates.xml",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<templates>\n" +
+                "  <template type=\"public\" title=\"PAGE_CONTAINER\" addon_id=\"XF\" version_id=\"1\" version_string=\"1\"><![CDATA[" +
+                "<template class=\"js-install\"><div>install</div></template>\n<xf:macro id=\"nav_entry\" arg-nav=\"!\">entry</xf:macro>]]></template>\n" +
+                "</templates>",
+        )
+        configureTemplate("<xf:macro id=\"PAGE_CONTAINER::nav_<caret>entry\" />", name = "demo_nav.html")
+        val reference = myFixture.getReferenceAtCaretPositionWithAssertion() as XfNameReference
+        assertNotNull(reference.multiResolve(false).firstOrNull()?.element)
+        assertEmpty(unknownMacros())
+        val source = nt.xenforo.modification.XfModifications.templateSource(project, "public", "PAGE_CONTAINER")!!
+        assertTrue(source.body.toString().endsWith("entry</xf:macro>"))
+    }
+
     private fun unknownMacros(): List<String> =
         myFixture.doHighlighting()
             .filter { it.severity == HighlightSeverity.WEAK_WARNING && it.description?.startsWith("Macro '") == true }

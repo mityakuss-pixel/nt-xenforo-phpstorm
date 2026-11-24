@@ -31,6 +31,7 @@ import com.intellij.ui.dsl.builder.columns
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.intellij.ui.dsl.listCellRenderer.textListCellRenderer
+import nt.xenforo.index.XfTemplatesXml
 import nt.xenforo.XfBundle.message
 import nt.xenforo.commands.XfAddOn
 import nt.xenforo.commands.XfCommandRunner
@@ -53,6 +54,9 @@ private const val DEFAULT_REPLACE = "\$0"
 private const val DEFAULT_ORDER = 10
 private val KEY = Regex("""[A-Za-z0-9_]+""")
 private val TEMPLATE_OPEN = Regex("""<template\s([^>]*?)>""")
+private const val TEMPLATE_TAG = "<template "
+private const val CDATA_OPEN = "<![CDATA["
+private const val CDATA_CLOSE = "]]>"
 private val XML_ATTRIBUTE = Regex("""([\w:-]+)\s*=\s*"([^"]*)"""")
 
 data class XfTemplateSelection(val type: String, val title: String, val find: String, val templateText: CharSequence)
@@ -162,12 +166,25 @@ object XfModificationCreation {
         if (!XfModificationMarkers.isTemplatesXml(file)) return null
         val text = document.charsSequence
         val head = text.subSequence(0, start).toString()
-        val openStart = head.lastIndexOf("<template ")
-        if (openStart < 0) return null
-        val open = TEMPLATE_OPEN.find(text, openStart)?.takeIf { it.range.first == openStart } ?: return null
-        val close = StringUtil.indexOf(text, "</template>", open.range.last)
+        var openStart = head.lastIndexOf(TEMPLATE_TAG)
+        var open: MatchResult? = null
+        var attributes: Map<String, String> = emptyMap()
+        while (openStart >= 0) {
+            val candidate = TEMPLATE_OPEN.find(text, openStart)?.takeIf { it.range.first == openStart }
+            val candidateAttributes = candidate?.let { found -> XML_ATTRIBUTE.findAll(found.groupValues[1]).associate { it.groupValues[1] to StringUtil.unescapeXmlEntities(it.groupValues[2]) } }
+            if (candidate != null && candidateAttributes != null && candidateAttributes.containsKey("type") && candidateAttributes.containsKey("title")) {
+                open = candidate
+                attributes = candidateAttributes
+                break
+            }
+            openStart = if (openStart == 0) -1 else head.lastIndexOf(TEMPLATE_TAG, openStart - 1)
+        }
+        if (open == null) return null
+        val bodyStart = open.range.last + 1
+        val cdata = StringUtil.startsWith(text, bodyStart, CDATA_OPEN)
+        val contentEnd = XfTemplatesXml.bodyEnd(text, if (cdata) bodyStart + CDATA_OPEN.length else bodyStart)
+        val close = if (cdata) contentEnd + CDATA_CLOSE.length else contentEnd
         if (close < end) return null
-        val attributes = XML_ATTRIBUTE.findAll(open.groupValues[1]).associate { it.groupValues[1] to StringUtil.unescapeXmlEntities(it.groupValues[2]) }
         val templateType = attributes["type"] ?: return null
         val title = attributes["title"] ?: return null
         return XfTemplateSelection(templateType, title, find, text.subSequence(open.range.last + 1, close))

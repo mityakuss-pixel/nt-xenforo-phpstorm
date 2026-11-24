@@ -23,6 +23,7 @@ import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.index.XfSymbolLocation
 import nt.xenforo.index.XfSymbolTarget
 import nt.xenforo.index.XfSymbols
+import nt.xenforo.index.XfTemplatesXml
 import nt.xenforo.lang.XfFileViewProvider
 import nt.xenforo.lang.XfLanguage
 import nt.xenforo.lang.XfTemplateFiles
@@ -39,7 +40,6 @@ private const val STYLE_PROPERTY_PREFIX = "xf-"
 private const val ICON_PREFIX = "fa-var-"
 private const val VARIABLE_MARK = "@"
 private const val MIXIN_MARK = "."
-private const val TEMPLATE_END = "</template>"
 private const val VARIABLE_TOOL = "LessUnresolvedVariable"
 private const val MIXIN_TOOL = "LessUnresolvedMixin"
 private const val BY_NAME_TOOL = "LessResolvedByNameOnly"
@@ -131,7 +131,7 @@ object XfLessResolver {
         val file = location.file
         val text = FileDocumentManager.getInstance().getCachedDocument(file)?.charsSequence ?: LoadTextUtil.loadText(file)
         val start = location.symbol.offset
-        val end = StringUtil.indexOf(text, TEMPLATE_END, start).takeIf { it >= 0 } ?: text.length
+        val end = XfTemplatesXml.bodyEnd(text, start)
         val pattern = when (symbol.kind) {
             XfLessKind.VARIABLE -> Regex("""(?m)^[ \t]*(@${Regex.escape(symbol.name)})\s*:""")
             XfLessKind.MIXIN -> Regex("""(?m)^[ \t]*(\.${Regex.escape(symbol.name)})\s*(?:\((?:[^(){}]|\([^(){}]*\))*\))?\s*(?:when\b[^{;]*)?\{""")

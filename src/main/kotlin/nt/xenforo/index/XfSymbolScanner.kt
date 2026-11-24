@@ -7,6 +7,8 @@ import nt.xenforo.lang.XfTemplateFiles
 private const val DETAIL_LIMIT = 160
 private const val METADATA_FILE = "_metadata.json"
 private const val CDATA_START = "<![CDATA["
+private const val CDATA_TEMPLATE_END = "]]></template>"
+private const val TEMPLATE_END = "</template>"
 private const val NAMESPACE_SEPARATOR = '\\'
 private const val MODIFICATIONS_FOLDER = "template_modifications"
 
@@ -42,6 +44,13 @@ private val JSON_STRING = Regex(""""((?:[^"\\]|\\.)*)"""")
 private val LESS_INCLUDE = Regex("""include\(\s*'([^']+)'\s*\)|include\(\s*"([^"]+)"\s*\)|<xf:include\s+template="([^"]+)"|@import\s+(?:\([^)]*\)\s*)?['"]([^'"]+)['"]""")
 private val LESS_VARIABLE = Regex("""(?m)^[ \t]*@([\w-]+)\s*:""")
 private val LESS_MIXIN = Regex("""(?m)^[ \t]*\.([\w-]+)\s*(?:\((?:[^(){}]|\([^(){}]*\))*\))?\s*(?:when\b[^{;]*)?\{""")
+
+object XfTemplatesXml {
+    fun bodyEnd(text: CharSequence, bodyStart: Int): Int {
+        val cdata = bodyStart >= CDATA_START.length && StringUtil.startsWith(text, bodyStart - CDATA_START.length, CDATA_START)
+        return StringUtil.indexOf(text, if (cdata) CDATA_TEMPLATE_END else TEMPLATE_END, bodyStart).takeIf { it >= 0 } ?: text.length
+    }
+}
 
 object XfLessKeys {
     fun includes(type: String, title: String): String = "i:$type:$title"
@@ -152,7 +161,7 @@ object XfSymbolScanner {
             val bodyStart = if (StringUtil.startsWith(text, tagEnd, CDATA_START)) tagEnd + CDATA_START.length else tagEnd
             result[XfSymbolKeys.template(type, title)] = XfSymbol(bodyStart, attributes["addon_id"].orEmpty())
             if (match.groupValues[2] == "/") continue
-            val bodyEnd = StringUtil.indexOf(text, "</template>", bodyStart).takeIf { it >= 0 } ?: text.length
+            val bodyEnd = XfTemplatesXml.bodyEnd(text, bodyStart)
             if (title.endsWith(".less") || title.endsWith(".css")) {
                 scanLess(text.subSequence(bodyStart, bodyEnd), type, title, result)
                 continue
