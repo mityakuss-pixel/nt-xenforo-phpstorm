@@ -81,6 +81,9 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <localInspection language="PHP" shortName="XfAdminTemplatePhp" enabledByDefault="true" level="WARNING"
                          key="inspection.admin.template.php.display.name" groupKey="inspection.group.name"
                          implementationClass="nt.xenforo.inspection.XfAdminTemplatePhpInspection"/>
+        <localInspection language="XenForoTemplate" shortName="XfUnknownMacro" enabledByDefault="true" level="WEAK WARNING"
+                         key="inspection.unknown.macro.display.name" groupKey="inspection.group.name"
+                         implementationClass="nt.xenforo.inspection.XfUnknownMacroInspection"/>
 
         <fileBasedIndex implementation="nt.xenforo.index.XfSymbolIndex"/>
         <fileBasedIndex implementation="nt.xenforo.index.XfTemplaterIndex"/>

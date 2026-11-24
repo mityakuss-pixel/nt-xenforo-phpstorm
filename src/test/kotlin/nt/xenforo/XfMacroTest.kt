@@ -3,6 +3,8 @@ package nt.xenforo
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
+import com.intellij.lang.annotation.HighlightSeverity
+import nt.xenforo.inspection.XfUnknownMacroInspection
 import nt.xenforo.psi.XfTagElement
 import nt.xenforo.psi.XfTagHeader
 import nt.xenforo.reference.XfNameKind
@@ -110,4 +112,35 @@ class XfMacroTest : XfTestCase() {
         assertContainsElements(variants, "alpha", "beta")
         assertDoesntContain(variants, "card")
     }
+
+    fun testUnknownMacroIsWeakWarningOnlyForKnownTemplates() {
+        myFixture.enableInspections(XfUnknownMacroInspection::class.java)
+        configureTemplate(
+            "<xf:macro id=\"local\">local</xf:macro>\n" +
+                "<xf:macro id=\"local\" />\n<xf:macro id=\"missing_local\" />\n" +
+                "<xf:macro id=\"public:demo_widget::card\" />\n<xf:macro id=\"public:demo_widget::missing_card\" />\n" +
+                "<xf:macro template=\"public:demo_widget\" name=\"other_missing\" />\n" +
+                "{{ call_macro('public:demo_widget', 'call_missing') }}\n" +
+                "<xf:macro id=\"public:not_installed::anything\" />",
+            name = "demo_checks.html",
+        )
+        assertEquals(listOf("missing_local", "missing_card", "other_missing", "call_missing"), unknownMacros())
+    }
+
+    fun testMacroAddedByModificationIsNotReported() {
+        myFixture.enableInspections(XfUnknownMacroInspection::class.java)
+        addOutputFile(
+            "template_modifications/public/demo_add_macro.json",
+            "{\n    \"template\": \"demo_widget\",\n    \"action\": \"str_replace\",\n    \"find\": \"public card\",\n" +
+                "    \"replace\": \"\$0</xf:macro><xf:macro id=\\\"added\\\">added\"\n}",
+        )
+        configureTemplate("<xf:macro id=\"public:demo_widget::added\" />\n<xf:macro id=\"public:demo_widget::still_missing\" />", name = "demo_mod_checks.html")
+        assertEquals(listOf("still_missing"), unknownMacros())
+    }
+
+    private fun unknownMacros(): List<String> =
+        myFixture.doHighlighting()
+            .filter { it.severity == HighlightSeverity.WEAK_WARNING && it.description?.startsWith("Macro '") == true }
+            .sortedBy { it.startOffset }
+            .map { it.text }
 }

@@ -35,6 +35,7 @@ Every name comes from the files of your forum: the `_output` folders of your add
 - **Documentation.** <kbd>Ctrl</kbd>+<kbd>Q</kbd> shows the phrase text, the option description, tag attributes and function parameters. The phrase text is also shown in gray after `{{ phrase('…') }}`.
 - **Formatting.** <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>L</kbd> indents with tabs, like XenForo's own templates. `<xf:else />` lines up with its `<xf:if>` as you type, and attributes are aligned according to the HTML code style.
 - **Compile errors.** Unclosed and mismatched tags, `<xf:else />` outside `<xf:if>`, unknown tags, unfinished expressions and `phrase($name)` with a name taken from a variable are underlined right away, before you open the forum. For `phrase($name)`, <kbd>Alt</kbd>+<kbd>Enter</kbd> replaces the call with `phrase_dynamic($name)`.
+- **Unknown macros.** When the template is found but has no macro with that name, `<xf:macro id="template::macro">` and `call_macro()` get a weak warning. Templates missing from the project and templates that a template modification may add the macro to are not checked.
 - **Admin templates outside the control panel.** XenForo compiles admin templates only for the admin control panel, so `<xf:include template="admin:…">` in `public` and `email` templates is underlined.
 - **Typing assistance.** `{{` adds the closing ` }}`, `>` in `<xf:foreach …>` adds the closing tag, and <kbd>Ctrl</kbd>+<kbd>/</kbd> wraps the selection in `<xf:comment>`.
 
