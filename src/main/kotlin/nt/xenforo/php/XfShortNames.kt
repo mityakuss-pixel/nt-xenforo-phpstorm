@@ -207,6 +207,14 @@ class XfShortNameReference(literal: StringLiteralExpression, range: TextRange, p
     }
 
     override fun getVariants(): Array<Any> = emptyArray()
+
+    override fun handleElementRename(newElementName: String): PsiElement =
+        super.handleElementRename(XfClassRename.renameLastSegment(value, newElementName, shortContext.kinds.mapNotNull { it.suffix }))
+
+    override fun bindToElement(element: PsiElement): PsiElement {
+        val phpClass = element as? PhpClass ?: return super.bindToElement(element)
+        return super.handleElementRename(XfClassRename.shortName(phpClass.fqn, shortContext))
+    }
 }
 
 class XfShortNameCompletionContributor : CompletionContributor() {

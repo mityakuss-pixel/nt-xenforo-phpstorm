@@ -10,6 +10,8 @@ import com.intellij.psi.PsiReferenceProvider
 import com.intellij.psi.util.PsiTreeUtil
 import com.intellij.util.ProcessingContext
 import com.jetbrains.php.PhpIndex
+import com.jetbrains.php.lang.psi.elements.PhpClass
+import nt.xenforo.php.XfClassRename
 import nt.xenforo.XfBundle
 import nt.xenforo.index.XfSymbolTarget
 import nt.xenforo.lang.XfTemplateFiles
@@ -106,4 +108,12 @@ class XfCallbackReference(host: XfAttributeValue, range: TextRange, private val 
     }
 
     override fun getVariants(): Array<Any> = emptyArray()
+
+    override fun handleElementRename(newElementName: String): PsiElement =
+        super.handleElementRename(if (method == null) XfClassRename.renameLastSegment(value, newElementName) else newElementName)
+
+    override fun bindToElement(element: PsiElement): PsiElement {
+        if (method != null || element !is PhpClass) return super.bindToElement(element)
+        return super.handleElementRename(element.fqn.trimStart('\\'))
+    }
 }

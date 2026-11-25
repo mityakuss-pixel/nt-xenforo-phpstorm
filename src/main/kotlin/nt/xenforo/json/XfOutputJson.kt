@@ -20,6 +20,7 @@ import com.jetbrains.jsonSchema.extension.JsonSchemaProviderFactory
 import com.jetbrains.jsonSchema.extension.SchemaType
 import com.jetbrains.php.PhpIndex
 import com.jetbrains.php.lang.psi.elements.PhpClass
+import nt.xenforo.php.XfClassRename
 import nt.xenforo.php.XfShortContext
 import nt.xenforo.php.XfShortKind
 import nt.xenforo.php.XfShortNames
@@ -93,6 +94,24 @@ private class XfOutputJsonReference(literal: JsonStringLiteral, private val targ
     }
 
     override fun getVariants(): Array<Any> = emptyArray()
+
+    override fun handleElementRename(newElementName: String): PsiElement = when (target) {
+        is XfJsonTarget.Method -> super.handleElementRename(newElementName)
+        is XfJsonTarget.Short -> super.handleElementRename(XfClassRename.renameLastSegment(element.value, newElementName, listOfNotNull(target.kind.suffix)))
+        XfJsonTarget.PhpClassName -> super.handleElementRename(XfClassRename.renameLastSegment(element.value, newElementName, listOfNotNull(XfShortKind.ENTITY.suffix)))
+    }
+
+    override fun bindToElement(element: PsiElement): PsiElement {
+        val phpClass = element as? PhpClass ?: return super.bindToElement(element)
+        if (target is XfJsonTarget.Method) return super.bindToElement(element)
+        val name = if (value.contains(':')) {
+            val kind = (target as? XfJsonTarget.Short)?.kind ?: XfShortKind.ENTITY
+            XfClassRename.shortName(phpClass.fqn, XfShortContext(listOf(kind), ROUTE_SECTIONS[sibling("route_type")] ?: "Pub"))
+        } else {
+            phpClass.fqn.trimStart(SEPARATOR)
+        }
+        return super.handleElementRename(name)
+    }
 
     private fun sibling(name: String): String? =
         ((element.parent?.parent as? JsonObject)?.findProperty(name)?.value as? JsonStringLiteral)?.value
