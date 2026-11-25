@@ -118,6 +118,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <lang.quoteHandler language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfQuoteHandler"/>
         <lang.psiStructureViewFactory language="XenForoTemplate" implementationClass="nt.xenforo.structure.XfStructureViewFactory"/>
         <breadcrumbsInfoProvider implementation="nt.xenforo.structure.XfBreadcrumbsProvider" order="first"/>
+        <editorFactoryDocumentListener implementation="nt.xenforo.editor.XfTagNameDocumentListener"/>
         <lang.foldingBuilder language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfFoldingBuilder"/>
         <lang.commenter language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfCommenter"/>
         <multiLangCommenter implementation="nt.xenforo.editor.XfMultipleLangCommentProvider"/>
@@ -159,6 +160,10 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         </intentionAction>
         <notificationGroup id="nt.xenforo.commands" displayType="BALLOON" bundle="messages.XfBundle" key="notification.group.commands"/>
     </extensions>
+
+    <applicationListeners>
+        <listener class="nt.xenforo.editor.XfTagNameCommandListener" topic="com.intellij.openapi.command.CommandListener"/>
+    </applicationListeners>
 
     <projectListeners>
         <listener class="nt.xenforo.modification.XfTemplatesXmlMarkers" topic="com.intellij.openapi.fileEditor.FileEditorManagerListener"/>

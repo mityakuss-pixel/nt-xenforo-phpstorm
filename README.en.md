@@ -38,7 +38,7 @@ Every name comes from the files of your forum: the `_output` folders of your add
 - **Compile errors.** Unclosed and mismatched tags, `<xf:else />` outside `<xf:if>`, unknown tags, unfinished expressions and `phrase($name)` with a name taken from a variable are underlined right away, before you open the forum. For `phrase($name)`, <kbd>Alt</kbd>+<kbd>Enter</kbd> replaces the call with `phrase_dynamic($name)`.
 - **Unknown macros.** When the template is found but has no macro with that name, `<xf:macro id="template::macro">` and `call_macro()` get a weak warning. Templates missing from the project and templates that a template modification may add the macro to are not checked.
 - **Admin templates outside the control panel.** XenForo compiles admin templates only for the admin control panel, so `<xf:include template="admin:…">` in `public` and `email` templates is underlined.
-- **Typing assistance.** `{{` adds the closing ` }}`, `>` in `<xf:foreach …>` adds the closing tag, and <kbd>Ctrl</kbd>+<kbd>/</kbd> wraps the selection in `<xf:comment>`.
+- **Typing assistance.** `{{` adds the closing ` }}`, `>` in `<xf:foreach …>` adds the closing tag, and <kbd>Ctrl</kbd>+<kbd>/</kbd> wraps the selection in `<xf:comment>`. Renaming any paired `<xf:…>` tag, for example `<xf:select>` to `<xf:radio>`, renames the closing tag too, as with HTML, and the other way round.
 
 <details>
 <summary><b>Where completion and navigation work</b></summary>
