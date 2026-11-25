@@ -117,6 +117,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <lang.braceMatcher language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfBraceMatcher"/>
         <lang.quoteHandler language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfQuoteHandler"/>
         <lang.psiStructureViewFactory language="XenForoTemplate" implementationClass="nt.xenforo.structure.XfStructureViewFactory"/>
+        <breadcrumbsInfoProvider implementation="nt.xenforo.structure.XfBreadcrumbsProvider" order="first"/>
         <lang.foldingBuilder language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfFoldingBuilder"/>
         <lang.commenter language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfCommenter"/>
         <multiLangCommenter implementation="nt.xenforo.editor.XfMultipleLangCommentProvider"/>
