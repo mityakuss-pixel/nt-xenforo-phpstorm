@@ -60,6 +60,28 @@ class XfContainerTest : XfTestCase() {
         assertContainsElements(myFixture.completeBasic()?.map { it.lookupString }.orEmpty(), "router.public", "em", "demo.service")
     }
 
+    fun testFactoryTypesInCreate() {
+        myFixture.addFileToProject(
+            "src/XF/Factories.php",
+            "<?php\nnamespace XF;\n\nclass Factories\n{\n\tpublic function setup(Container \$container)\n\t{\n" +
+                "\t\t\$container->factory('style', function (\$id, array \$params, Container \$c) { return null; });\n" +
+                "\t\t\$container->factory('cache.symfony', function (\$context, array \$params, Container \$c) { return null; });\n\t}\n}\n",
+        )
+        myFixture.addFileToProject(
+            "src/addons/Demo/Test/StyleListener.php",
+            "<?php\nnamespace Demo\\Test;\n\nclass StyleListener\n{\n\tpublic static function appSetup(\\XF\\App \$app)\n\t{\n" +
+                "\t\t\$app->container()->extendFactory('style', function (\$id, array \$params, \$c, \$original) { return \$original(\$id, \$params, \$c); });\n\t}\n}\n",
+        )
+        configurePhp("\\XF::app()->create('sty<caret>le', 1);")
+        assertSameElements(targets().map { it.containingFileName() }, "Factories.php", "StyleListener.php")
+        configurePhp("\\XF::app()->container()->create('cache.sym<caret>fony', 'context');")
+        assertEquals(listOf("Factories.php"), targets().map { it.containingFileName() })
+        configurePhp("\\XF::em()->create('XF:Us<caret>er');")
+        assertEmpty(targets())
+        configurePhp("\\XF::app()->create('<caret>', 1);")
+        assertContainsElements(myFixture.completeBasic()?.map { it.lookupString }.orEmpty(), "style", "cache.symfony")
+    }
+
     private fun configurePhp(statement: String) {
         files++
         val prefix = "<?php\n\nnamespace Demo\\Test\\Pub\\Controller;\n\nclass Demo$files\n{\n\tpublic function actionIndex()\n\t{\n\t\t"

@@ -36,7 +36,7 @@ class XfSymbolIndex : FileBasedIndexExtension<String, XfSymbol>() {
 
     override fun getValueExternalizer(): DataExternalizer<XfSymbol> = XfSymbolExternalizer
 
-    override fun getVersion(): Int = 13
+    override fun getVersion(): Int = 14
 
     override fun getInputFilter(): FileBasedIndex.InputFilter = FileBasedIndex.InputFilter { XfSymbolScanner.isIndexed(it) }
 
@@ -80,6 +80,8 @@ object XfSymbolKeys {
     fun structureListenerPrefix(entity: String): String = "es:$entity:"
     fun container(key: String): String = "ck:$key"
     const val CONTAINER_PREFIX: String = "ck:"
+    fun containerFactory(type: String): String = "cf:$type"
+    const val CONTAINER_FACTORY_PREFIX: String = "cf:"
 }
 
 internal fun VirtualFile.hasAncestorChain(vararg names: String): Boolean {

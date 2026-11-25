@@ -5,6 +5,7 @@ import com.intellij.codeInsight.completion.CompletionParameters
 import com.intellij.codeInsight.completion.CompletionProvider
 import com.intellij.codeInsight.completion.CompletionResultSet
 import com.intellij.codeInsight.completion.CompletionType
+import com.intellij.codeInsight.completion.CompletionUtil
 import com.intellij.codeInsight.hints.declarative.HintFormat
 import com.intellij.codeInsight.hints.declarative.InlayHintsCollector
 import com.intellij.codeInsight.hints.declarative.InlayHintsProvider
@@ -57,6 +58,7 @@ private const val ADMIN_NAMESPACE = "\\Admin\\"
 private const val HINT_LIMIT = 40
 private const val NODE_PERMISSION_GROUP = "forum"
 private const val CONTAINER_METHOD = "container"
+private const val FACTORY_METHOD = "create"
 private const val CONTAINER_CLASS = "\\XF\\Container"
 private const val CORE_NAMESPACE = "\\XF\\"
 private const val APP_CLASS_SUFFIX = "\\App"
@@ -103,6 +105,7 @@ object XfPhpNames {
                 XfPhpSlot(XfNameKind.PERMISSION, TextRange(start, start + value.length), XfSymbolKeys.permissionPrefix(NODE_PERMISSION_GROUP))
             "hasadminpermission" to 0 -> XfPhpSlot(XfNameKind.PERMISSION, TextRange(start, start + value.length), XfSymbolKeys.ADMIN_PERMISSION_PREFIX)
             CONTAINER_METHOD to 0 -> if (call is MethodReference) containerSlot(literal) else null
+            FACTORY_METHOD to 0 -> if (call is MethodReference) factorySlot(literal, parameters) else null
             else -> null
         }
     }
@@ -121,6 +124,15 @@ object XfPhpNames {
     private fun containerSlot(literal: StringLiteralExpression): XfPhpSlot {
         val start = literal.valueRange.startOffset
         return XfPhpSlot(XfNameKind.CONTAINER, TextRange(start, start + literal.contents.length), XfSymbolKeys.CONTAINER_PREFIX)
+    }
+
+    private fun factorySlot(literal: StringLiteralExpression, parameters: ParameterList): XfPhpSlot? {
+        val value = literal.contents
+        if (parameters.parameters.size < 2 || value.contains(':') || DumbService.isDumb(literal.project)) return null
+        val typing = value.contains(CompletionUtil.DUMMY_IDENTIFIER_TRIMMED)
+        if (!typing && XfSymbolKeys.containerFactory(value) !in XfDataTracker.keys(literal.project, XfSymbolKeys.CONTAINER_FACTORY_PREFIX)) return null
+        val start = literal.valueRange.startOffset
+        return XfPhpSlot(XfNameKind.CONTAINER, TextRange(start, start + value.length), XfSymbolKeys.CONTAINER_FACTORY_PREFIX)
     }
 
     private fun isContainerType(type: String): Boolean =

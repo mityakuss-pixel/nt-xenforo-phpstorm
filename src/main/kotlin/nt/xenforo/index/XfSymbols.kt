@@ -40,6 +40,7 @@ private val TYPE_NAMES = linkedMapOf(
     "v:" to "symbol.type.view",
     "wp:" to "symbol.type.widget.position",
     "ck:" to "symbol.type.container",
+    "cf:" to "symbol.type.container.factory",
     "je:" to "symbol.type.handler",
     "jv:" to "symbol.type.handler",
     "jc:" to "symbol.type.handler",
