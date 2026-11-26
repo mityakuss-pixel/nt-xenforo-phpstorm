@@ -18,12 +18,19 @@ class XfCommandSettings : SimplePersistentStateComponent<XfCommandSettings.Optio
         var interpreter by string()
         var root by string()
         var followAddOnPhpLevel by property(false)
+        var hideExtensionClasses by property(true)
     }
 
     var followAddOnPhpLevel: Boolean
         get() = state.followAddOnPhpLevel
         set(value) {
             state.followAddOnPhpLevel = value
+        }
+
+    var hideExtensionClasses: Boolean
+        get() = state.hideExtensionClasses
+        set(value) {
+            state.hideExtensionClasses = value
         }
 
     var interpreter: String?

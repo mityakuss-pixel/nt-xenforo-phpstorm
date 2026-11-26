@@ -43,6 +43,11 @@ class XfCommandConfigurable(private val project: Project) :
                     .bindSelected({ settings.followAddOnPhpLevel }, { settings.followAddOnPhpLevel = it })
                     .comment(message("settings.php.level.follow.comment"))
             }
+            row {
+                checkBox(message("settings.completion.hide.extensions"))
+                    .bindSelected({ settings.hideExtensionClasses }, { settings.hideExtensionClasses = it })
+                    .comment(message("settings.completion.hide.extensions.comment"))
+            }
         }
     }
 

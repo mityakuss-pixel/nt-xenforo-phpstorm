@@ -90,6 +90,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <psi.referenceContributor language="XenForoTemplate" implementation="nt.xenforo.reference.XfReferenceContributor"/>
         <psi.referenceContributor language="XML" implementation="nt.xenforo.reference.XfHtmlHandlerReferenceContributor"/>
         <psi.referenceContributor language="PHP" implementation="nt.xenforo.php.XfPhpReferenceContributor"/>
+        <completion.contributor language="PHP" implementationClass="nt.xenforo.php.XfExtensionCompletionFilter" order="first"/>
         <completion.contributor language="PHP" implementationClass="nt.xenforo.php.XfPhpCompletionContributor"/>
         <completion.contributor language="PHP" implementationClass="nt.xenforo.php.XfEntityStringCompletionContributor"/>
         <psi.referenceContributor language="PHP" implementation="nt.xenforo.php.XfEntityStringReferenceContributor"/>
