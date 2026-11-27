@@ -144,7 +144,7 @@ object XfShortNames {
         for (kind in context.kinds) {
             val base = kind.base ?: continue
             index.processAllSubclasses(base) { phpClass ->
-                if (!phpClass.isAbstract) {
+                if (!phpClass.isAbstract && !XfExtensionClassFilter.isProxy(phpClass) && !XfExtensionClassFilter.isHidden(project, phpClass)) {
                     shortName(phpClass.fqn, kind, context.section)?.let { result.putIfAbsent(it, phpClass.fqn.trimStart(SEPARATOR)) }
                 }
                 true

@@ -66,6 +66,25 @@ class XfShortNamesTest : XfTestCase() {
         assertContainsElements(myFixture.completeBasic()?.map { it.lookupString }.orEmpty(), "XF:User", "Demo\\Test:Note")
     }
 
+    fun testCompletionSkipsExtensionsAndProxies() {
+        myFixture.addFileToProject("src/addons/TC/Demo/XF/Entity/XFCP_User.php", "<?php\nnamespace TC\\Demo\\XF\\Entity;\nclass XFCP_User extends \\XF\\Entity\\User {}\n")
+        myFixture.addFileToProject("src/addons/TC/Demo/XF/Entity/User.php", "<?php\nnamespace TC\\Demo\\XF\\Entity;\nclass User extends XFCP_User {}\n")
+        configurePhp("\$this->em()->create('<caret>');")
+        val hidden = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
+        assertContainsElements(hidden, "XF:User", "Demo\\Test:Note")
+        assertDoesntContain(hidden, "TC\\Demo\\XF:User", "TC\\Demo\\XF:XFCP_User")
+        val settings = nt.xenforo.commands.XfCommandSettings.getInstance(project)
+        settings.hideExtensionClasses = false
+        try {
+            configurePhp("\$this->em()->create('<caret>');")
+            val shown = myFixture.completeBasic()?.map { it.lookupString }.orEmpty()
+            assertContainsElements(shown, "TC\\Demo\\XF:User")
+            assertDoesntContain(shown, "TC\\Demo\\XF:XFCP_User")
+        } finally {
+            settings.hideExtensionClasses = true
+        }
+    }
+
     fun testShortNameToClassIntention() {
         val cases = listOf(
             "\\XF::em()->create('XF:Us<caret>er');" to "\\XF::em()->create(\\XF\\Entity\\User::class);",
