@@ -47,6 +47,7 @@ import nt.xenforo.index.XfSymbolKeys
 import nt.xenforo.index.XfSymbols
 import nt.xenforo.lang.XfIcons
 import nt.xenforo.lang.XfTemplateFiles
+import nt.xenforo.reference.XfMacroTarget
 import nt.xenforo.reference.XfNameKind
 import nt.xenforo.reference.XfPhraseNames
 import javax.swing.Icon
@@ -209,6 +210,11 @@ class XfPhpNameReference(literal: StringLiteralExpression, val slot: XfPhpSlot) 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> =
         ResolveCache.getInstance(element.project).resolveWithCaching(this, PHP_RESOLVER, false, incompleteCode)
             .ifEmpty { resolveTargets() }
+
+    override fun isReferenceTo(element: PsiElement): Boolean {
+        if (element is XfMacroTarget) return slot.kind == XfNameKind.MACRO && XfMacroTarget.matches(element, multiResolve(false).map { it.element })
+        return super.isReferenceTo(element)
+    }
 
     fun resolveTargets(): Array<ResolveResult> {
         val project = element.project

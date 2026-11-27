@@ -123,6 +123,8 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <breadcrumbsInfoProvider implementation="nt.xenforo.structure.XfBreadcrumbsProvider" order="first"/>
         <editorFactoryDocumentListener implementation="nt.xenforo.editor.XfTagNameDocumentListener"/>
         <referencesSearch implementation="nt.xenforo.php.XfShortNameReferencesSearcher"/>
+        <referencesSearch implementation="nt.xenforo.reference.XfMacroReferencesSearcher"/>
+        <renameHandler implementation="nt.xenforo.reference.XfMacroRenameHandler" order="first"/>
         <lang.foldingBuilder language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfFoldingBuilder"/>
         <lang.commenter language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfCommenter"/>
         <multiLangCommenter implementation="nt.xenforo.editor.XfMultipleLangCommentProvider"/>

@@ -108,6 +108,11 @@ class XfNameReference(host: XfReferenceHost, val slot: XfNameSlot) :
 
     override fun getVariants(): Array<Any> = emptyArray()
 
+    override fun isReferenceTo(element: PsiElement): Boolean {
+        if (element is XfMacroTarget) return slot.kind == XfNameKind.MACRO && XfMacroTarget.matches(element, multiResolve(false).map { it.element })
+        return super.isReferenceTo(element)
+    }
+
     override fun handleElementRename(newElementName: String): PsiElement {
         val name = when (slot.kind) {
             XfNameKind.TEMPLATE -> newElementName.removeSuffix(".html")
