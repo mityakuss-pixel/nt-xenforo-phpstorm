@@ -102,6 +102,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <lang.elementManipulator forClass="nt.xenforo.psi.XfAccessExpression" implementationClass="nt.xenforo.reference.XfAccessExpressionManipulator"/>
         <platform.backend.documentation.targetProvider order="first" implementation="nt.xenforo.documentation.XfDocumentationTargetProvider"/>
         <codeInsight.parameterInfo language="XenForoTemplate" implementationClass="nt.xenforo.editor.XfParameterInfoHandler"/>
+        <codeInsight.parameterInfo language="PHP" implementationClass="nt.xenforo.php.XfServiceParameterInfoHandler" order="before phpParameterInfo"/>
         <codeInsight.declarativeInlayProvider language="XenForoTemplate" providerId="nt.xenforo.phrase.text" isEnabledByDefault="true"
                                               group="VALUES_GROUP" bundle="messages.XfBundle" nameKey="inlay.phrase.name"
                                               descriptionKey="inlay.phrase.description"
