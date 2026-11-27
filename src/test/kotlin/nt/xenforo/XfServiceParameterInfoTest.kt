@@ -1,5 +1,7 @@
 package nt.xenforo
 
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.utils.parameterInfo.MockCreateParameterInfoContext
 import com.intellij.testFramework.utils.parameterInfo.MockUpdateParameterInfoContext
 import nt.xenforo.php.XfConstructorSignature
@@ -34,6 +36,26 @@ class XfServiceParameterInfoTest : XfTestCase() {
     fun testInheritedConstructorAndHelper() {
         assertEquals(emptyList<String>(), parameterInfo("\\XF::app()->service('Vendor\\AddOn:Plain', <caret>)").first.parameters)
         assertEquals(listOf("string \$format", "int \$limit = 10"), parameterInfo("\\XF::helper('Vendor\\AddOn\\Helper\\Formatter', <caret>)").first.parameters)
+    }
+
+    fun testHintOpenedBeforeClassSwitchesToConstructor() {
+        myFixture.addFileToProject("src/XF.php", "<?php\n\nclass XF\n{\n\tpublic static function service(\$class) {}\n}\n")
+        configurePhp("\\XF::service(<caret>)")
+        val handler = XfServiceParameterInfoHandler()
+        val create = MockCreateParameterInfoContext(myFixture.editor, myFixture.file)
+        assertNotNull(handler.findElementForParameterInfo(create))
+        val signature = create.itemsToShow.orEmpty().single() as XfConstructorSignature
+        assertEquals(listOf("\$class"), signature.parameters)
+        val inserted = "'Vendor\\AddOn:Creator', "
+        WriteCommandAction.runWriteCommandAction(project) { myFixture.editor.document.insertString(myFixture.caretOffset, inserted) }
+        PsiDocumentManager.getInstance(project).commitAllDocuments()
+        myFixture.editor.caretModel.moveToOffset(myFixture.caretOffset + inserted.length)
+        val update = MockUpdateParameterInfoContext(myFixture.editor, myFixture.file, arrayOf(signature))
+        val owner = handler.findElementForUpdatingParameterInfo(update)
+        assertNotNull(owner)
+        handler.updateParameterInfo(owner!!, update)
+        assertEquals(listOf("User \$user", "bool \$notify = true"), signature.parameters)
+        assertEquals(0, update.currentParameter)
     }
 
     fun testUnknownClassFallsBackToPhpStorm() {

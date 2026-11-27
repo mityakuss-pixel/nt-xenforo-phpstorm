@@ -14,12 +14,17 @@ import com.jetbrains.php.lang.lexer.PhpTokenTypes
 import com.jetbrains.php.lang.psi.elements.ClassConstantReference
 import com.jetbrains.php.lang.psi.elements.ClassReference
 import com.jetbrains.php.lang.psi.elements.FunctionReference
+import com.jetbrains.php.lang.psi.elements.Method
+import com.jetbrains.php.lang.psi.elements.MethodReference
+import com.jetbrains.php.lang.psi.elements.Parameter
 import com.jetbrains.php.lang.psi.elements.ParameterList
 import com.jetbrains.php.lang.psi.elements.PhpClass
 import com.jetbrains.php.lang.psi.elements.StringLiteralExpression
 
 private const val CLASS_CONSTANT = "class"
 private const val NAMESPACE_SEPARATOR = '\\'
+private const val CORE_CLASS = "\\XF"
+private const val CORE_NAMESPACE = "\\XF\\"
 private val MODIFIERS = Regex("""^(?:(?:public|protected|private|readonly)\s+)+""")
 
 private enum class XfFactoryCall(val method: String, val kind: XfShortKind, val injected: Int) {
@@ -27,12 +32,26 @@ private enum class XfFactoryCall(val method: String, val kind: XfShortKind, val 
     HELPER("helper", XfShortKind.HELPER, 0),
 }
 
-class XfConstructorSignature(val className: String, val parameters: List<String>)
+class XfConstructorSignature {
+    var className: String? = null
+        private set
+    var parameters: List<String> = emptyList()
+        private set
+    var shift: Int = 0
+        private set
+
+    internal fun refresh(className: String?, parameters: List<String>, shift: Int) {
+        this.className = className
+        this.parameters = parameters
+        this.shift = shift
+    }
+}
 
 class XfServiceParameterInfoHandler : ParameterInfoHandler<ParameterList, XfConstructorSignature> {
     override fun findElementForParameterInfo(context: CreateParameterInfoContext): ParameterList? {
         val arguments = argumentsAt(context.file, context.offset) ?: return null
-        val signature = signatureOf(arguments) ?: return null
+        val signature = XfConstructorSignature()
+        if (!refresh(signature, arguments)) return null
         context.itemsToShow = arrayOf(signature)
         return arguments
     }
@@ -45,7 +64,10 @@ class XfServiceParameterInfoHandler : ParameterInfoHandler<ParameterList, XfCons
         argumentsAt(context.file, context.offset)
 
     override fun updateParameterInfo(parameterOwner: ParameterList, context: UpdateParameterInfoContext) {
-        context.setCurrentParameter(ParameterInfoUtils.getCurrentParameterIndex(parameterOwner.node, context.offset, PhpTokenTypes.opCOMMA) - 1)
+        val signature = context.objectsToView.firstOrNull() as? XfConstructorSignature
+        if (signature != null) refresh(signature, parameterOwner)
+        val index = ParameterInfoUtils.getCurrentParameterIndex(parameterOwner.node, context.offset, PhpTokenTypes.opCOMMA)
+        context.setCurrentParameter(index - (signature?.shift ?: 1))
     }
 
     override fun updateUI(signature: XfConstructorSignature, context: ParameterInfoUIContext) {
@@ -69,6 +91,21 @@ class XfServiceParameterInfoHandler : ParameterInfoHandler<ParameterList, XfCons
         context.setupUIComponentPresentation(text.toString(), start, end, false, false, false, context.defaultParameterColor)
     }
 
+    private fun refresh(signature: XfConstructorSignature, arguments: ParameterList): Boolean {
+        if (DumbService.isDumb(arguments.project)) return false
+        val call = factoryCall(arguments) ?: return false
+        val phpClass = targetClass(arguments, call)
+        if (phpClass != null) {
+            signature.refresh(phpClass.fqn, phpClass.constructor?.parameters.orEmpty().drop(call.injected).map(::presentable), 1)
+            return true
+        }
+        val method = coreMethod(arguments) ?: return false
+        signature.refresh(null, method.parameters.map(::presentable), 0)
+        return true
+    }
+
+    private fun presentable(parameter: Parameter): String = MODIFIERS.replace(parameter.text.trim(), "")
+
     private fun argumentsAt(file: PsiFile, offset: Int): ParameterList? {
         var call = PsiTreeUtil.getParentOfType(file.findElementAt(offset), FunctionReference::class.java, false)
         while (call != null) {
@@ -86,12 +123,10 @@ class XfServiceParameterInfoHandler : ParameterInfoHandler<ParameterList, XfCons
         return XfFactoryCall.entries.firstOrNull { it.method.equals(name, ignoreCase = true) }
     }
 
-    private fun signatureOf(arguments: ParameterList): XfConstructorSignature? {
-        if (DumbService.isDumb(arguments.project)) return null
-        val call = factoryCall(arguments) ?: return null
-        val phpClass = targetClass(arguments, call) ?: return null
-        val parameters = phpClass.constructor?.parameters.orEmpty().drop(call.injected).map { MODIFIERS.replace(it.text.trim(), "") }
-        return XfConstructorSignature(phpClass.fqn, parameters)
+    private fun coreMethod(arguments: ParameterList): Method? {
+        val method = (arguments.parent as? MethodReference)?.resolve() as? Method ?: return null
+        val owner = method.containingClass?.fqn ?: return null
+        return method.takeIf { owner == CORE_CLASS || owner.startsWith(CORE_NAMESPACE) }
     }
 
     private fun targetClass(arguments: ParameterList, call: XfFactoryCall): PhpClass? {
@@ -99,7 +134,9 @@ class XfServiceParameterInfoHandler : ParameterInfoHandler<ParameterList, XfCons
         return when (val first = arguments.parameters.firstOrNull()) {
             is StringLiteralExpression -> {
                 val name = first.contents
-                if (name.contains(':')) {
+                if (name.isEmpty()) {
+                    null
+                } else if (name.contains(':')) {
                     XfShortNames.resolve(project, name, XfShortContext(listOf(call.kind), "Pub"))
                 } else {
                     PhpIndex.getInstance(project).getClassesByFQN(NAMESPACE_SEPARATOR + name.trimStart(NAMESPACE_SEPARATOR)).firstOrNull()
