@@ -66,6 +66,7 @@ open as XenForo templates: HTML, LESS or CSS with the template syntax on top.</p
         <elementDescriptionProvider implementation="nt.xenforo.index.XfSymbolDescriptionProvider"/>
         <editorNotificationProvider implementation="nt.xenforo.php.XfPhpLevelNotificationProvider"/>
         <customScopesProvider implementation="nt.xenforo.commands.XfAddOnScopesProvider"/>
+        <searchScopesProvider implementation="nt.xenforo.commands.XfAddOnSearchScopesProvider"/>
         <localInspection language="XenForoTemplate" shortName="XfUnknownTag" enabledByDefault="true" level="WARNING"
                          key="inspection.unknown.tag.display.name" groupKey="inspection.group.name"
                          implementationClass="nt.xenforo.inspection.XfUnknownTagInspection"/>
