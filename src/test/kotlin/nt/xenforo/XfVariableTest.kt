@@ -8,8 +8,8 @@ import nt.xenforo.reference.XfVariableReference
 class XfVariableTest : XfTestCase() {
     fun testIfConditionOpensSet() {
         configureTemplate(
-            "<xf:set var=\"\$hasBadges\" value=\"{{ is_addon_active('TC/FlarumBadges') }}\" />\n\n" +
-                "<xf:if is=\"\$has<caret>Badges\">\n\t<xf:css src=\"tc_clib_fa_picker.less\" />\n</xf:if>",
+            "<xf:set var=\"\$hasBadges\" value=\"{{ is_addon_active('Vendor/Badges') }}\" />\n\n" +
+                "<xf:if is=\"\$has<caret>Badges\">\n\t<xf:css src=\"vendor_badges.less\" />\n</xf:if>",
         )
         assertEquals("var", attributeOf(resolve()))
     }
