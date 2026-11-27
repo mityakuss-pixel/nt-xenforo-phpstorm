@@ -208,6 +208,7 @@ class XfPhpNameReference(literal: StringLiteralExpression, val slot: XfPhpSlot) 
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> =
         ResolveCache.getInstance(element.project).resolveWithCaching(this, PHP_RESOLVER, false, incompleteCode)
+            .ifEmpty { resolveTargets() }
 
     fun resolveTargets(): Array<ResolveResult> {
         val project = element.project

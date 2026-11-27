@@ -2,7 +2,11 @@ package nt.xenforo
 
 import com.intellij.openapi.vfs.VfsUtilCore
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiPolyVariantReference
+import com.intellij.psi.ResolveResult
+import com.intellij.psi.impl.source.resolve.ResolveCache
 import com.intellij.psi.impl.source.resolve.reference.impl.PsiMultiReference
+import nt.xenforo.reference.XfNameReference
 import nt.xenforo.commands.XfAddOns
 import nt.xenforo.documentation.XfDocumentationTarget
 import nt.xenforo.documentation.XfDocumentationTargetProvider
@@ -64,6 +68,25 @@ class XfPhraseToolsTest : XfTestCase() {
         assertNotEmpty(myFixture.getAllQuickFixes().filter { it.text == "Create phrase 'demo_absent'…" })
     }
 
+    fun testEmptyResultCachedBeforeIndexingIsNotReported() {
+        addDataFile("phrases.xml", "<phrases><phrase title=\"save\" addon_id=\"XF\"><![CDATA[Save]]></phrase></phrases>")
+        myFixture.enableInspections(XfUnknownPhraseInspection(), XfUnknownPhrasePhpInspection())
+        configureTemplate("{{ phrase('demo_ti<caret>tle') }}")
+        val templateReference = myFixture.file.findReferenceAt(myFixture.caretOffset).let { found ->
+            (if (found is PsiMultiReference) found.references.toList() else listOfNotNull(found)).filterIsInstance<XfNameReference>().single()
+        }
+        ResolveCache.getInstance(project).resolveWithCaching(templateReference, EMPTY_RESOLVER, false, false)
+        assertEmpty(myFixture.doHighlighting().filter { it.description?.contains("is not found") == true })
+        assertNotEmpty(templateReference.multiResolve(false).toList())
+        configurePhp("\\XF::phrase('demo_ti<caret>tle');")
+        val phpReference = myFixture.file.findReferenceAt(myFixture.caretOffset).let { found ->
+            (if (found is PsiMultiReference) found.references.toList() else listOfNotNull(found)).filterIsInstance<XfPhpNameReference>().single()
+        }
+        ResolveCache.getInstance(project).resolveWithCaching(phpReference, EMPTY_RESOLVER, false, false)
+        assertEmpty(myFixture.doHighlighting().filter { it.description?.contains("is not found") == true })
+        assertNotEmpty(phpReference.multiResolve(false).toList())
+    }
+
     fun testUnknownPhraseNeedsCoreData() {
         myFixture.enableInspections(XfUnknownPhraseInspection())
         configureTemplate("{{ phrase('demo_missing') }}")
@@ -112,3 +135,5 @@ class XfPhraseToolsTest : XfTestCase() {
 
     private var files = 0
 }
+
+private val EMPTY_RESOLVER = ResolveCache.PolyVariantResolver<PsiPolyVariantReference> { _, _ -> ResolveResult.EMPTY_ARRAY }

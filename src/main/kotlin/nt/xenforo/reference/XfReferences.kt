@@ -104,6 +104,7 @@ class XfNameReference(host: XfReferenceHost, val slot: XfNameSlot) :
 
     override fun multiResolve(incompleteCode: Boolean): Array<ResolveResult> =
         ResolveCache.getInstance(element.project).resolveWithCaching(this, RESOLVER, false, incompleteCode)
+            .ifEmpty { resolveTargets() }
 
     override fun getVariants(): Array<Any> = emptyArray()
 
